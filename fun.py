@@ -7,7 +7,10 @@ import random
 
 from parameters import *
 from perms import *
+from jisho import jisho
 
+j = jisho.Jisho()
+j.contains_kana("123")
 
 # Chaos
 class Fun(commands.Cog):
