@@ -15,6 +15,8 @@ MSG_LIMIT = 10  # tight limit at the moment since incomplete feature.
 
 OK_EMOJI = "\U00002705"
 NO_EMOJI = "\U0000274C"
+LEFT_EMOJI = "\U00002B05"
+RIGHT_EMOJI = "\U000027A1"
 REPEAT_EMOJI = "\U0001F501"
 INPUT = {OK_EMOJI, NO_EMOJI, REPEAT_EMOJI}
 

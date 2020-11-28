@@ -3,36 +3,31 @@
 # yukari
 #
 
-import asyncio
-import datetime as dt
 import logging
 import os
-import re
-import socket
-import time
-import typing
-
 import random
-
-random.seed()
+import socket
 
 import discord
 from discord.ext import commands
-
-from parameters import *
-
-from util import Util
-from bottools import BotTools
-from fun import Fun
 from dotenv import load_dotenv
 
+from bottools import BotTools
+from fun import Fun
+from constants import *
+from util import Util
+
 load_dotenv()
+
+random.seed()
+
 logging.basicConfig(level=logging.INFO)
 cli = commands.Bot(command_prefix=CMD_PREFIX)
 
 
 @cli.event
 async def on_ready():
+    print(cli)
     print(f"Successfully logged in as {cli.user}.")
     await cli.change_presence(status=discord.Status.online,
                               activity=discord.Game(

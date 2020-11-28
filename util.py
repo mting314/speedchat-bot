@@ -4,7 +4,7 @@ import typing
 import discord
 from discord.ext import commands
 
-from parameters import *
+from constants import *
 from perms import *
 
 
