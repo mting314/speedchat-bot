@@ -17,14 +17,14 @@ class Fun(commands.Cog):
         response_message = ""
 
         entry = search_response[meaning_num]
-        jword = entry['japanese'][0]['word'] # 0 is primary reading
+        jword = entry['japanese'][0]['word']  # 0 is primary reading
         reading = entry['japanese'][0]['reading']
         url = self.j.JISHO_NORMAL_URL + jword
 
         response_message += f"{jword}({reading}) {url}"
 
         for n, sense in enumerate(entry['senses']):
-            if n == (def_number-1):
+            if n == (def_number - 1):
                 response_message += f"\n{n + 1}. " + ', '.join(sense['english_definitions'])
 
         return response_message
@@ -59,10 +59,9 @@ class Fun(commands.Cog):
 
         # await status.edit(content=response_message)
 
-
     @commands.command(help="Look up a stroke order for a SINGLE kanji")
     @is_admin()
-    async def benis(self, ctx, english: str, def_num: int = None,  meaning_num: int = 0, ):
+    async def benis(self, ctx, english: str, def_num: int = None, meaning_num: int = 0, ):
         status = await ctx.send(f"Searching for {english}.")
         # try:
         response_message = self._generate_message(self.j.esearch(english), meaning_num=meaning_num)

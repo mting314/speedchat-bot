@@ -6,9 +6,25 @@ import re
 import urllib
 import html
 
+ONYOMI_LOCATOR_SYMBOL = 'On'
+KUNYOMI_LOCATOR_SYMBOL = 'Kun'
+
+JISHO_API = 'https://jisho.org/api/v1/search/words'
+SCRAPE_BASE_URI = 'https://jisho.org/search/'
+STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_diagrams/'
+
 
 def remove_new_lines(my_string):
     return re.sub('/(?:\r|\n)/g', '', my_string).strip()
+
+
+# I'm 99% sure this is bugged/doesn't work anymore because classic.jisho.org doesn't seem to exist anymore
+def getUriForStrokeOrderDiagram(kanji):
+    return f'{STROKE_ORDER_DIAGRAM_BASE_URI}{str(ord(kanji))}_frames.png'
+
+
+def uriForKanjiSearch(kanji):
+    return f'{SCRAPE_BASE_URI}{urllib.parse.quote(kanji)}%23kanji'
 
 
 def contains_kanji_glyph(page_html, kanji):
@@ -16,8 +32,8 @@ def contains_kanji_glyph(page_html, kanji):
     return kanjiGlyphToken in str(page_html)
 
 
-def get_string_between_strings(data, startString, endString):
-    regex = f'{re.escape(startString)}(.*?){re.escape(endString)}'
+def get_string_between_strings(data, start_string, end_string):
+    regex = f'{re.escape(start_string)}(.*?){re.escape(end_string)}'
     # Need DOTALL because the HTML still has its newline characters
     match = re.search(regex, str(data), re.DOTALL)
 
@@ -29,9 +45,106 @@ def getNewspaperFrequencyRank(page_html):
     return frequency_section if get_string_between_strings(frequency_section, '<strong>', '</strong>') else None
 
 
-def getIntBetweenStrings(page_html, startString, endString):
-    string_between_strings = get_string_between_strings(page_html, startString, endString)
+def getIntBetweenStrings(page_html, start_string, end_string):
+    string_between_strings = get_string_between_strings(page_html, start_string, end_string)
     return int(string_between_strings) if string_between_strings else None
+
+
+def parseAnchorsToArray(my_string):
+    regex = '<a href=".*?">(.*?)<\/a>'
+    return re.findall(regex, my_string)
+
+
+def get_yomi(page_html, yomiLocatorSymbol):
+    yomi_section = get_string_between_strings(page_html, f'<dt>{yomiLocatorSymbol}:</dt>', '</dl>')
+    return parseAnchorsToArray(yomi_section) or ''
+
+
+def get_kunyomi(page_html):
+    return get_yomi(page_html, KUNYOMI_LOCATOR_SYMBOL)
+
+
+def get_onyomi(page_html):
+    return get_yomi(page_html, ONYOMI_LOCATOR_SYMBOL)
+
+
+def get_yomi_examples(page_html, yomiLocatorSymbol):
+    locator_string = f'<h2>{yomiLocatorSymbol} reading compounds</h2>'
+    example_section = get_string_between_strings(page_html, locator_string, '</ul>')
+    if not example_section:
+        return []
+
+    regex = '<li>(.*?)<\/li>'
+    regex_results = map(lambda x: x.strip(), re.findall(regex, example_section, re.DOTALL))
+
+    for example in regex_results:
+        example_lines = list(map(lambda x: x.strip(), example.split('\n')))
+
+        yield {
+            'example': example_lines[0],
+            'reading': example_lines[1].replace('【', '').replace('】', ''),
+            'meaning': html.unescape(example_lines[2]),
+        }
+
+
+def get_onyomi_examples(page_html):
+    return get_yomi_examples(page_html, ONYOMI_LOCATOR_SYMBOL)
+
+
+def get_kunyomi_examples(page_html):
+    return get_yomi_examples(page_html, KUNYOMI_LOCATOR_SYMBOL)
+
+
+def getRadical(page_html):
+    radicalMeaningStartString = '<span class="radical_meaning">'
+    radicalMeaningEndString = '</span>'
+    #
+    # radicalMeaning = get_string_between_strings(page_html, radicalMeaningStartString, radicalMeaningEndString).strip()
+
+    radicalMeaning = page_html.find("span", {"class", "radical_meaning"})
+
+    # TODO: Improve this? I don't like all the string finding that much, rather do it with BS finding
+    if radicalMeaning:
+        page_html_string = str(page_html)
+
+        radicalMeaningStartIndex = page_html_string.find(radicalMeaningStartString)
+
+        radicalMeaningEndIndex = page_html_string.find(radicalMeaningEndString, radicalMeaningStartIndex)
+
+        radicalSymbolStartIndex = radicalMeaningEndIndex + len(radicalMeaningEndString)
+        radicalSymbolEndString = '</span>'
+        radicalSymbolEndIndex = page_html_string.find(radicalSymbolEndString, radicalSymbolStartIndex)
+
+        radicalSymbolsString = page_html_string[radicalSymbolStartIndex:radicalSymbolEndIndex]
+
+        if len(radicalSymbolsString) > 1:
+            radicalForms = radicalSymbolsString[1:].replace('(', '').replace(')', '').strip().split(', ')
+
+            return {'symbol': radicalSymbolsString[0], 'forms': radicalForms, 'meaning': radicalMeaning.string.strip()}
+
+        return {'symbol': radicalSymbolsString, 'meaning': radicalMeaning}
+
+    return None
+
+
+def getParts(page_html):
+    partsSection = page_html.find("dt", text="Parts:").find_next_sibling('dd')
+    result = parseAnchorsToArray(str(partsSection))
+    result.sort()
+    return result
+
+
+def get_svg_uri(page_html):
+    svgRegex = '/\/\/.*?.cloudfront.net\/.*?.svg/'
+    regexResult = re.search(svgRegex, str(page_html))
+    return f'https:{regexResult[0]}' if regexResult else None
+
+
+def getGifUri(kanji):
+    for char in kanji:
+        fileName = f'{str(ord(char))}.gif'
+        animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
+        yield animationUri
 
 
 def parse_kanji_page_data(page_html, kanji):
@@ -45,16 +158,16 @@ def parse_kanji_page_data(page_html, kanji):
     result['strokeCount'] = getIntBetweenStrings(page_html, '<strong>', '</strong> strokes')
     result['meaning'] = html.unescape(remove_new_lines(
         get_string_between_strings(page_html, '<div class="kanji-details__main-meanings">', '</div>')).strip())
-    result.kunyomi = getKunyomi(page_html);
-    # result.onyomi = getOnyomi(page_html);
-    # result.onyomiExamples = getOnyomiExamples(page_html);
-    # result.kunyomiExamples = getKunyomiExamples(page_html);
-    # result.radical = getRadical(pageHtml);
-    # result.parts = getParts(pageHtml);
-    # result.strokeOrderDiagramUri = getUriForStrokeOrderDiagram(kanji);
-    # result.strokeOrderSvgUri = getSvgUri(pageHtml);
-    # result.strokeOrderGifUri = getGifUri(kanji);
-    # result.uri = uriForKanjiSearch(kanji);
+    result['kunyomi'] = get_kunyomi(page_html)
+    result['onyomi'] = get_onyomi(page_html)
+    result['onyomiExamples'] = list(get_onyomi_examples(page_html))
+    result['kunyomiExamples'] = list(get_kunyomi_examples(page_html))
+    result['radical'] = getRadical(page_html)
+    result['parts'] = getParts(page_html)
+    result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
+    result['strokeOrderSvgUri'] = get_svg_uri(page_html)
+    result['strokeOrderGifUri'] = list(getGifUri(kanji))
+    result['uri'] = uriForKanjiSearch(kanji)
     return result
 
 
