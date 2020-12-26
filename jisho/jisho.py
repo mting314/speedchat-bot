@@ -1,17 +1,84 @@
 import requests
 from itertools import zip_longest
-
 from bs4 import BeautifulSoup
 from .kana import *
+import re
+import urllib
+import html
+
+
+def remove_new_lines(my_string):
+    return re.sub('/(?:\r|\n)/g', '', my_string).strip()
+
+
+def contains_kanji_glyph(page_html, kanji):
+    kanjiGlyphToken = f'<h1 class="character" data-area-name="print" lang="ja">{kanji}</h1>'
+    return kanjiGlyphToken in str(page_html)
+
+
+def get_string_between_strings(data, startString, endString):
+    regex = f'{re.escape(startString)}(.*?){re.escape(endString)}'
+    # Need DOTALL because the HTML still has its newline characters
+    match = re.search(regex, str(data), re.DOTALL)
+
+    return match[1] if match is not None else None
+
+
+def getNewspaperFrequencyRank(page_html):
+    frequency_section = get_string_between_strings(page_html, '<div class="frequency">', '</div>')
+    return frequency_section if get_string_between_strings(frequency_section, '<strong>', '</strong>') else None
+
+
+def getIntBetweenStrings(page_html, startString, endString):
+    string_between_strings = get_string_between_strings(page_html, startString, endString)
+    return int(string_between_strings) if string_between_strings else None
+
+
+def parse_kanji_page_data(page_html, kanji):
+    result = {'query': kanji, 'found': contains_kanji_glyph(page_html, kanji)}
+    if not result['found']:
+        return result
+
+    result['taughtIn'] = get_string_between_strings(page_html, 'taught in <strong>', '</strong>')
+    result['jlptLevel'] = get_string_between_strings(page_html, 'JLPT level <strong>', '</strong>')
+    result['newspaperFrequencyRank'] = getNewspaperFrequencyRank(page_html)
+    result['strokeCount'] = getIntBetweenStrings(page_html, '<strong>', '</strong> strokes')
+    result['meaning'] = html.unescape(remove_new_lines(
+        get_string_between_strings(page_html, '<div class="kanji-details__main-meanings">', '</div>')).strip())
+    result.kunyomi = getKunyomi(page_html);
+    # result.onyomi = getOnyomi(page_html);
+    # result.onyomiExamples = getOnyomiExamples(page_html);
+    # result.kunyomiExamples = getKunyomiExamples(page_html);
+    # result.radical = getRadical(pageHtml);
+    # result.parts = getParts(pageHtml);
+    # result.strokeOrderDiagramUri = getUriForStrokeOrderDiagram(kanji);
+    # result.strokeOrderSvgUri = getSvgUri(pageHtml);
+    # result.strokeOrderGifUri = getGifUri(kanji);
+    # result.uri = uriForKanjiSearch(kanji);
+    return result
+
 
 class Jisho:
     """A class to interface with Jisho.org and store search results for use.
 
     """
 
+    JISHO_API = 'https://jisho.org/api/v1/search/words'
+    SCRAPE_BASE_URI = 'https://jisho.org/search/'
+    STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_diagrams/'
+
     def __init__(self):
         self.html = None
         self.response = None
+
+    def uriForKanjiSearch(self, kanji):
+        return f'{self.SCRAPE_BASE_URI}{urllib.parse.quote(kanji)}%23kanji'
+
+    def searchForKanji(self, kanji):
+        uri = self.uriForKanjiSearch(kanji)
+        page = requests.get(uri)
+        soup = BeautifulSoup(page.content, 'lxml')
+        return parse_kanji_page_data(soup, kanji)
 
     def kana_to_halpern(self, untrans):
         """Take a word completely in hiragana or katakana and translate it into romaji"""
@@ -208,11 +275,24 @@ class Jisho:
         return ''.join(full_word)
 
     def get_stroke_order(self, kanji):
-        self._get_search_response(kanji, filters=["kanji"])
-        self._extract_html()
-        results = self.html.select_one('svg[class^=stroke_order_diagram]').text
-        print(results)
-        return results
+        import re
+        unicode_strings = str(kanji.encode('unicode-escape')).split('\\\\u')[1:]
+        # strip out all non alpha numeric characters from unicode
+        unicode_strings_clean = map(lambda x: re.sub(r'\W+', '', x), unicode_strings)
+        for uniChar in unicode_strings_clean:
+            fileName = f'{uniChar}.gif'
+            animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
+            yield animationUri
+
+    def esearch(self, english):
+        """Takes a romaji-ified word and gives the first result from jisho"""
+        params = {'keyword': english}
+        response = requests.get(self.JISHO_API_URL, params=params)
+        jsonResponse = response.json()
+        if response.status_code == requests.codes.ok and len(jsonResponse["data"]) > 0:
+            return jsonResponse['data']
+        else:  # could not find good search result
+            return None
 
     def export_to_json(self):
         pass

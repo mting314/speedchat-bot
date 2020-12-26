@@ -15,7 +15,7 @@ class Util(commands.Cog):
 
     # one-time use invite
     @commands.command(help="Generate a one-time use invite to the system messages channel")
-    @is_leo()
+    @is_owner()
     async def otp(self, ctx, channel: typing.Optional[discord.TextChannel], *, reason: typing.Optional[str]):
         status = await ctx.send(f"Creating an invite for you...")
         invite = await (channel or ctx.guild.system_channel).create_invite(max_age=0, max_uses=1,
@@ -25,7 +25,7 @@ class Util(commands.Cog):
 
     # destroy an invite
     @commands.command(help="Destroy an invite")
-    @is_leo()
+    @is_owner()
     async def rmotp(self, ctx, inv: discord.Invite, *, reason: typing.Optional[str]):
         status = await ctx.send(f"Deleting invite id {inv.id}")
         await inv.delete()

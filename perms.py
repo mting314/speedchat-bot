@@ -8,6 +8,5 @@ def is_admin():
 
 
 # ...but are you me?
-def is_leo():
-    print("are you leo?")
+def is_owner():
     return commands.check(lambda ctx: str(ctx.author) == os.getenv('OWNER'))

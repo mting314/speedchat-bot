@@ -13,30 +13,21 @@ class Fun(commands.Cog):
         self.bot = bot
         self.j = jisho.Jisho()
 
-    # shuffle users among a category of voice channels
-    # TODO: opt-in shuffle
-    @commands.command(help="Shuffle users about a category")
-    @is_admin()
-    async def shuf(self, ctx, *, chan: discord.CategoryChannel):
-        status = await ctx.send(f"Okay, I'll shuffle users amongst {chan.name}.")
-        random.seed()
-        while True:
-            await status.edit(content="Waiting for your reaction...")
-            await status.add_reaction(OK_EMOJI)
-            await status.add_reaction(NO_EMOJI)
-            r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author)
-            if r.emoji == NO_EMOJI:
-                break
+    def _generate_message(self, search_response, meaning_num=0, def_number=2):
+        response_message = ""
 
-            await status.edit(content="Shuffling...")
+        entry = search_response[meaning_num]
+        jword = entry['japanese'][0]['word'] # 0 is primary reading
+        reading = entry['japanese'][0]['reading']
+        url = self.j.JISHO_NORMAL_URL + jword
 
-            # shuffle the lads
-            for m in [m for c in chan.voice_channels for m in c.members]:
-                await m.move_to(random.choice(chan.voice_channels))
+        response_message += f"{jword}({reading}) {url}"
 
-            await status.edit(content="Shuffled!")
-            await status.clear_reaction(OK_EMOJI)
-        await status.edit(content="Aborted.", delete_after=TMPMSG_DEFAULT)
+        for n, sense in enumerate(entry['senses']):
+            if n == (def_number-1):
+                response_message += f"\n{n + 1}. " + ', '.join(sense['english_definitions'])
+
+        return response_message
 
     def _get_meaning(self, hira, meaning_num=0):
         response = self.j.jsearch(hira)
@@ -48,30 +39,37 @@ class Fun(commands.Cog):
         response_message += "\n\nWas this the meaning you were looking for? If not, use arrows to move to a different one."
         return response_message
 
-
     @commands.command(help="Look up a stroke order for a SINGLE kanji")
     @is_admin()
     async def stroke(self, ctx, *, kanji: str, meaning_num: int = 0):
         status = await ctx.send(f"Searching for {kanji}.")
         try:
-            response_message = self.j.get_stroke_order(kanji)
+            stroke_gifs = self.j.get_stroke_order(kanji)
+            for gif in stroke_gifs:
+                # embed = discord.Embed()
+                # embed.set_image(url=gif)
+                # await ctx.send(embed=embed)
+
+                await ctx.send(content=gif)
+
         except TypeError:
             response_message = "Sorry, I could not find that."
             await status.edit(content=response_message)
-            return
+        return
 
-        await status.edit(content=response_message)
+        # await status.edit(content=response_message)
 
 
-
-    async def oof(self, ctx, *, hira: str, meaning_num: int = 0):
-        status = await ctx.send(f"Searching for {hira}.")
-        try:
-            response_message = self._get_meaning(hira, meaning_num)
-        except TypeError:
-            response_message = "Sorry, I could not find that."
-            await status.edit(content=response_message)
-            return
+    @commands.command(help="Look up a stroke order for a SINGLE kanji")
+    @is_admin()
+    async def benis(self, ctx, english: str, def_num: int = None,  meaning_num: int = 0, ):
+        status = await ctx.send(f"Searching for {english}.")
+        # try:
+        response_message = self._generate_message(self.j.esearch(english), meaning_num=meaning_num)
+        # except TypeError as e:
+        #     print(e)
+        #     await status.edit(content="Sorry, I could not find that.")
+        #     return
 
         await status.edit(content=response_message)
         while True:
@@ -79,7 +77,20 @@ class Fun(commands.Cog):
             await status.add_reaction(RIGHT_EMOJI)
 
             r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author)
-
-            await status.edit(content=self._get_meaning(hira, meaning_num+(1 if r.emoji == RIGHT_EMOJI else -1)))
+            #
+            # await status.edit(content=self._get_meaning(hira, meaning_num+(1 if r.emoji == RIGHT_EMOJI else -1)))
 
         await status.edit(content="Aborted.", delete_after=TMPMSG_DEFAULT)
+
+    @commands.command(help="Look up a stroke order for a SINGLE kanji")
+    @is_admin()
+    async def search(self, ctx, kanji: str):
+        status = await ctx.send(f"Searching for {kanji}.")
+        # try:
+        response_message = self.j.searchForKanji(kanji)
+        # except TypeError as e:
+        #     print(e)
+        #     await status.edit(content="Sorry, I could not find that.")
+        #     return
+
+        await status.edit(content=response_message)

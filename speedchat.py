@@ -1,6 +1,6 @@
 #! env/bin/python
 #
-# yukari
+# speedchat
 #
 
 import logging

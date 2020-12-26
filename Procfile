@@ -1,1 +1,1 @@
-web: python yukari.py
+web: python speedchat.py
