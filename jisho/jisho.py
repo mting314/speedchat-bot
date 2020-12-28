@@ -51,7 +51,7 @@ def getIntBetweenStrings(page_html, start_string, end_string):
 
 
 def parseAnchorsToArray(my_string):
-    regex = '<a href=".*?">(.*?)<\/a>'
+    regex = r'<a href=".*?">(.*?)</a>'
     return re.findall(regex, my_string)
 
 
@@ -326,7 +326,7 @@ def getMeaningsOtherFormsAndNotes(my_html):
     for child in meaningsChildren:
         # child = meaningsChildren.eq(meaningIndex)
         if child.get("class")[0] == 'meaning-tags':
-            mostRecentWordTypes = map(lambda x: x.strip().lower(), child.text.split(','))
+            mostRecentWordTypes = list(map(lambda x: x.strip().lower(), child.text.split(',')))
         elif mostRecentWordTypes[0] == 'other forms':
             otherForms = list(map(lambda y: ({'kanji': y[0], 'kana': y[1]}),
                                   map(lambda x: x.replace('【', '').replace('】', '').split(' '),
@@ -334,11 +334,11 @@ def getMeaningsOtherFormsAndNotes(my_html):
         elif mostRecentWordTypes[0] == 'notes':
             notes = child.text().split('\n')
         else:
-            meaning = child.find('.meaning-meaning').text()
-            meaningAbstract = child.find('.meaning-abstract').find('a').remove().end().text()
+            meaning = child.find("span", {"class", 'meaning-meaning'}).text
+            meaningAbstract = child.select('.meaning-abstract')[0].select('a').remove().end().text
 
-            supplemental = filter(lambda y: bool(y),
-                                  map(lambda x: x.strip(), child.find('.supplemental_info').text().split(',')))
+            supplemental = list(filter(lambda y: bool(y),
+                                  map(lambda x: x.strip(), child.find('.supplemental_info').text().split(','))))
 
             seeAlsoTerms = []
             for i in reversed(range(len(supplemental))):
@@ -356,7 +356,7 @@ def getMeaningsOtherFormsAndNotes(my_html):
                 english = sentenceElement.find('.english').text()
                 pieces = getPieces(sentenceElement)
 
-                japanese = sentenceElement.find('.english').remove().end().find('.furigana').remove().end().text();
+                japanese = sentenceElement.find('.english').remove().end().find('.furigana').remove().end().text()
 
                 sentences.append({english, japanese, pieces})
 
@@ -599,4 +599,4 @@ class Jisho:
 
 if __name__ == '__main__':
     j = Jisho()
-    j.get_stroke_order("草")
+    # j.get_stroke_order("草")
