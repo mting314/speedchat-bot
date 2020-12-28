@@ -81,12 +81,12 @@ class Fun(commands.Cog):
 
         await status.edit(content="Aborted.", delete_after=TMPMSG_DEFAULT)
 
-    @commands.command(help="Look up a stroke order for a SINGLE kanji")
+    @commands.command(help="Look up all info for a SINGLE kanji")
     @is_admin()
     async def search(self, ctx, kanji: str):
         status = await ctx.send(f"Searching for {kanji}.")
         # try:
-        response_message = self.j.searchForKanji(kanji)
+        response_message = str(await self.j.scrapeForPhrase(kanji))[:1999]
         # except TypeError as e:
         #     print(e)
         #     await status.edit(content="Sorry, I could not find that.")

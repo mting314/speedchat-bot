@@ -95,7 +95,7 @@ def get_kunyomi_examples(page_html):
     return get_yomi_examples(page_html, KUNYOMI_LOCATOR_SYMBOL)
 
 
-def getRadical(page_html):
+def get_radical(page_html):
     radicalMeaningStartString = '<span class="radical_meaning">'
     radicalMeaningEndString = '</span>'
     #
@@ -147,6 +147,39 @@ def getGifUri(kanji):
         yield animationUri
 
 
+def kana_to_halpern(untrans):
+    """Take a word completely in hiragana or katakana and translate it into romaji"""
+    halpern = []
+    while untrans:
+
+        if len(untrans) > 1:
+            first = untrans[0]
+            second = untrans[1]
+        else:
+            first = untrans[0]
+            second = None
+
+        if first in hiragana:
+            if second and second in ["ゃ", "ゅ", "ょ"]:
+                halpern.append(hira2eng[first + second])
+                untrans = untrans[2:]
+            else:
+                halpern.append(hira2eng[first])
+                untrans = untrans[1:]
+        else:
+            if second and second in ["ャ", "ュ", "ョ"]:
+                halpern.append(kata2eng[first + second])
+                untrans = untrans[2:]
+            else:
+                halpern.append(kata2eng[first])
+                untrans = untrans[1:]
+
+        del first
+        del second
+
+    return "".join(halpern)
+
+
 def parse_kanji_page_data(page_html, kanji):
     result = {'query': kanji, 'found': contains_kanji_glyph(page_html, kanji)}
     if not result['found']:
@@ -162,12 +195,201 @@ def parse_kanji_page_data(page_html, kanji):
     result['onyomi'] = get_onyomi(page_html)
     result['onyomiExamples'] = list(get_onyomi_examples(page_html))
     result['kunyomiExamples'] = list(get_kunyomi_examples(page_html))
-    result['radical'] = getRadical(page_html)
+    result['radical'] = get_radical(page_html)
     result['parts'] = getParts(page_html)
     result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
     result['strokeOrderSvgUri'] = get_svg_uri(page_html)
     result['strokeOrderGifUri'] = list(getGifUri(kanji))
     result['uri'] = uriForKanjiSearch(kanji)
+    return result
+
+
+kanjiRegex = '[\u4e00-\u9faf\u3400-\u4dbf]'
+
+
+def uriForExampleSearch(phrase):
+    return f'{SCRAPE_BASE_URI}{urllib.parse.quote(phrase)}%23sentences'
+
+
+def getKanjiAndKana(div):
+    ul = div.find_all('ul')[0]
+    # contents = ul.contents()
+
+    kanji = ''
+    kana = ''
+    for child in ul.children:
+        # content = contents.eq(i)
+        if child.name == 'li':
+            li = child
+            furigana = li.find("span", {"class", 'furigana'}).text if li.find("span", {"class",
+                                                                                       'furigana'}) is not None else None
+            unlifted = li.find("span", {"class", 'unlinked'}).text if li.find("span", {"class",
+                                                                                       'unlinked'}) is not None else None
+
+            if furigana:
+                kanji += unlifted
+                kana += furigana
+
+                kanaEnding = []
+                for i in reversed(range(len(unlifted))):
+                    if not re.search(kanjiRegex, unlifted[i]):
+                        kanaEnding.append(unlifted[i])
+                    else:
+                        break
+
+                kana += ''.join(kanaEnding[::-1])
+            else:
+                kanji += unlifted
+                kana += unlifted
+        else:
+            text = str(child).strip()
+            if text:
+                kanji += text
+                kana += text
+
+    return kanji, kana
+
+
+def getPieces(sentenceElement):
+    pieceElements = sentenceElement.find_all("li", {"class", "clearfix"}) + sentenceElement.find_all("el")
+    pieces = []
+
+    for pieceElement in pieceElements:
+        # pieceElement = pieceElements.eq(pieceIndex)
+        if pieceElement.name == 'li':
+            pieces.append({
+                'lifted': pieceElement.find("span", {"class", 'furigana'}).text if pieceElement.find("span", {"class",
+                                                                                                              'furigana'}) is not None else '',
+                'unlifted': pieceElement.find("span", {"class", 'unlinked'}).text if pieceElement.find("span", {"class",
+                                                                                                                'unlinked'}) is not None else '',
+            })
+        else:
+            pieces.append({
+                'lifted': '',
+                'unlifted': pieceElement.text,
+            })
+
+    return pieces
+
+
+def parseExampleDiv(div):
+    english = str(div.find('span', {"class", 'english'}).find(text=True))
+    kanji, kana = getKanjiAndKana(div)
+
+    return english, kanji, kana, getPieces(div)
+
+
+def parseExamplePageData(pageHtml, phrase):
+    string_page_html = str(pageHtml)
+    pageHtmlReplaced = re.sub(
+        '<\/li>\s*([^\s<>]+)\s*<li class="clearfix">/g', r'</li><el>\1</el><li class="clearfix">', string_page_html)
+    myhtml = BeautifulSoup(pageHtmlReplaced, 'lxml')
+    divs = myhtml.find_all("div", {"class", 'sentence_content'})
+
+    results = []
+    for div in divs:
+        # div = divs.eq(i)
+        results.append(parseExampleDiv(div))
+
+    return {
+        'query': phrase,
+        'found': len(results) > 0,
+        'result': results,
+        'uri': uriForExampleSearch(phrase),
+        'phrase': phrase
+    }
+
+
+# PHRASE SCRAPE FUNCTIONS START
+
+def getTags(my_html):
+    tags = []
+
+    tagElements = my_html.find_all("span", {"class", 'concept_light-tag'})
+    for tagElement in tagElements:
+        # tagText = tagElements.eq(i).text()
+        tags.append(tagElement.text)
+
+    return tags
+
+
+def getMeaningsOtherFormsAndNotes(my_html):
+    otherForms = []
+    notes = []
+
+    meaningsWrapper = my_html.select(
+        '#page_container > div > div > article > div > div.concept_light-meanings.medium-9.columns > div')[0]
+    meaningsChildren = meaningsWrapper.children
+    meanings = []
+
+    mostRecentWordTypes = []
+    for child in meaningsChildren:
+        # child = meaningsChildren.eq(meaningIndex)
+        if child.get("class")[0] == 'meaning-tags':
+            mostRecentWordTypes = map(lambda x: x.strip().lower(), child.text.split(','))
+        elif mostRecentWordTypes[0] == 'other forms':
+            otherForms = list(map(lambda y: ({'kanji': y[0], 'kana': y[1]}),
+                                  map(lambda x: x.replace('【', '').replace('】', '').split(' '),
+                                      child.text.split('、'))))
+        elif mostRecentWordTypes[0] == 'notes':
+            notes = child.text().split('\n')
+        else:
+            meaning = child.find('.meaning-meaning').text()
+            meaningAbstract = child.find('.meaning-abstract').find('a').remove().end().text()
+
+            supplemental = filter(lambda y: bool(y),
+                                  map(lambda x: x.strip(), child.find('.supplemental_info').text().split(',')))
+
+            seeAlsoTerms = []
+            for i in reversed(range(len(supplemental))):
+                supplementalEntry = supplemental[i]
+                if supplementalEntry.startswith('See also'):
+                    seeAlsoTerms.append(supplementalEntry.replace('See also ', ''))
+                    supplemental.pop(i)
+
+            sentences = []
+            sentenceElements = child.find('.sentences').children('.sentence')
+
+            for sentenceElement in sentenceElements:
+                # sentenceElement = sentenceElements.eq(sentenceIndex)
+
+                english = sentenceElement.find('.english').text()
+                pieces = getPieces(sentenceElement)
+
+                japanese = sentenceElement.find('.english').remove().end().find('.furigana').remove().end().text();
+
+                sentences.append({english, japanese, pieces})
+
+            meanings.append({
+                'seeAlsoTerms': seeAlsoTerms,
+                'sentences': sentences,
+                'definition': meaning,
+                'supplemental': supplemental,
+                'definitionAbstract': meaningAbstract,
+                'tags': mostRecentWordTypes,
+            })
+
+    return meanings, otherForms, notes
+
+
+def uriForPhraseScrape(searchTerm):
+    return f'https://jisho.org/word/{urllib.parse.quote(searchTerm)}'
+
+
+def parsePhrasePageData(pageHtml, query):
+    my_html = BeautifulSoup(pageHtml, "lxml")
+    meanings, otherForms, notes = getMeaningsOtherFormsAndNotes(my_html)
+
+    result = {
+        'found': True,
+        'query': query,
+        'uri': uriForPhraseScrape(query),
+        'tags': getTags(my_html),
+        'meanings': meanings,
+        'other_forms': otherForms,
+        'notes': notes
+    }
+
     return result
 
 
@@ -184,46 +406,32 @@ class Jisho:
         self.html = None
         self.response = None
 
-    def uriForKanjiSearch(self, kanji):
-        return f'{self.SCRAPE_BASE_URI}{urllib.parse.quote(kanji)}%23kanji'
-
     def searchForKanji(self, kanji):
-        uri = self.uriForKanjiSearch(kanji)
+        uri = uriForKanjiSearch(kanji)
         page = requests.get(uri)
         soup = BeautifulSoup(page.content, 'lxml')
         return parse_kanji_page_data(soup, kanji)
 
-    def kana_to_halpern(self, untrans):
-        """Take a word completely in hiragana or katakana and translate it into romaji"""
-        halpern = []
-        while untrans:
+    def searchForExamples(self, phrase):
+        uri = uriForExampleSearch(phrase)
+        page = requests.get(uri)
+        soup = BeautifulSoup(page.content, 'lxml')
+        return parseExamplePageData(soup, phrase)
 
-            if len(untrans) > 1:
-                first = untrans[0]
-                second = untrans[1]
-            else:
-                first = untrans[0]
-                second = None
+    @staticmethod
+    async def scrapeForPhrase(phrase):
+        uri = uriForPhraseScrape(phrase)
+        try:
+            response = requests.get(uri)
+            return parsePhrasePageData(response.content, phrase)
+        except Exception as err:
+            # if err.response.status == 404:
+            #     return {
+            #         'query': phrase,
+            #         'found': False,
+            #     }
 
-            if first in hiragana:
-                if second and second in ["ゃ", "ゅ", "ょ"]:
-                    halpern.append(hira2eng[first + second])
-                    untrans = untrans[2:]
-                else:
-                    halpern.append(hira2eng[first])
-                    untrans = untrans[1:]
-            else:
-                if second and second in ["ャ", "ュ", "ョ"]:
-                    halpern.append(kata2eng[first + second])
-                    untrans = untrans[2:]
-                else:
-                    halpern.append(kata2eng[first])
-                    untrans = untrans[1:]
-
-            del first
-            del second
-
-        return "".join(halpern)
+            raise err
 
     def contains_kana(self, word):
         """Takes a word and returns true if there are hiragana or katakana present within the word"""
@@ -313,14 +521,15 @@ class Jisho:
         except ValueError:
             notes_index = False
 
-        if wiki_index:
-            return wiki_index
-        elif other_forms_index:
-            return other_forms_index
-        elif notes_index:
-            return notes_index
-        else:
-            return None
+        return wiki_index or other_forms_index or notes_index or None
+        # if wiki_index:
+        #     return wiki_index
+        # elif other_forms_index:
+        #     return other_forms_index
+        # elif notes_index:
+        #     return notes_index
+        # else:
+        #     return None
 
     def _extract_dictionary_information(self, entry):
         """Take a dictionary entry from Jisho and return all the necessary information."""
@@ -386,29 +595,6 @@ class Jisho:
         # print(''.join(full_word))
         # print("====")
         return ''.join(full_word)
-
-    def get_stroke_order(self, kanji):
-        import re
-        unicode_strings = str(kanji.encode('unicode-escape')).split('\\\\u')[1:]
-        # strip out all non alpha numeric characters from unicode
-        unicode_strings_clean = map(lambda x: re.sub(r'\W+', '', x), unicode_strings)
-        for uniChar in unicode_strings_clean:
-            fileName = f'{uniChar}.gif'
-            animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
-            yield animationUri
-
-    def esearch(self, english):
-        """Takes a romaji-ified word and gives the first result from jisho"""
-        params = {'keyword': english}
-        response = requests.get(self.JISHO_API_URL, params=params)
-        jsonResponse = response.json()
-        if response.status_code == requests.codes.ok and len(jsonResponse["data"]) > 0:
-            return jsonResponse['data']
-        else:  # could not find good search result
-            return None
-
-    def export_to_json(self):
-        pass
 
 
 if __name__ == '__main__':
