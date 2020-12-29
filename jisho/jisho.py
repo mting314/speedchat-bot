@@ -335,10 +335,18 @@ def getMeaningsOtherFormsAndNotes(my_html):
             notes = child.text().split('\n')
         else:
             meaning = child.find("span", {"class", 'meaning-meaning'}).text
-            meaningAbstract = child.select('.meaning-abstract')[0].select('a').remove().end().text
+            try:
+                child.select('.meaning-abstract')[0].select('a')[0].extract().end()
+                meaningAbstract = child.select('.meaning-abstract')[0].text
+            except IndexError:
+                meaningAbstract = ''
+            # meaningAbstract = child.select('.meaning-abstract')[0].select('a').remove().end().text
 
-            supplemental = list(filter(lambda y: bool(y),
-                                  map(lambda x: x.strip(), child.find('.supplemental_info').text().split(','))))
+            try:
+                supplemental = list(filter(lambda y: bool(y),
+                                    map(lambda x: x.strip(), child.select_one("span.supplemental_info").text.split(','))))
+            except AttributeError: # if we couldn't find supplemental info class
+                supplemental = []
 
             seeAlsoTerms = []
             for i in reversed(range(len(supplemental))):
@@ -348,17 +356,21 @@ def getMeaningsOtherFormsAndNotes(my_html):
                     supplemental.pop(i)
 
             sentences = []
-            sentenceElements = child.find('.sentences').children('.sentence')
+            sentenceElements = child.select_one("span.sentences > div.sentence") or []
 
             for sentenceElement in sentenceElements:
                 # sentenceElement = sentenceElements.eq(sentenceIndex)
 
-                english = sentenceElement.find('.english').text()
+                english = sentenceElement.find("li", {"class", 'english'}).text
                 pieces = getPieces(sentenceElement)
 
-                japanese = sentenceElement.find('.english').remove().end().find('.furigana').remove().end().text()
+                # remove english and furigana to get left with normal japanese
+                sentenceElement.find("li", {"class", 'english'}).extract()
+                sentenceElement.find("span", {"class", "furigana"}).extract()
 
-                sentences.append({english, japanese, pieces})
+                japanese = sentenceElement.text
+
+                sentences.append({'english': english, 'japanese': japanese, 'pieces': pieces})
 
             meanings.append({
                 'seeAlsoTerms': seeAlsoTerms,
@@ -522,14 +534,6 @@ class Jisho:
             notes_index = False
 
         return wiki_index or other_forms_index or notes_index or None
-        # if wiki_index:
-        #     return wiki_index
-        # elif other_forms_index:
-        #     return other_forms_index
-        # elif notes_index:
-        #     return notes_index
-        # else:
-        #     return None
 
     def _extract_dictionary_information(self, entry):
         """Take a dictionary entry from Jisho and return all the necessary information."""
