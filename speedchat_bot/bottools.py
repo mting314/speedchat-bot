@@ -2,8 +2,12 @@ import typing
 import discord
 from discord.ext import commands
 
-from constants import *
-from perms import *
+# from speedchat_bot import constants, perms
+import sys
+sys.path.append("/speedchat-bot/")
+import speedchat_bot
+from speedchat_bot.constants import *
+from speedchat_bot.perms import *
 
 
 # Bot admin and features

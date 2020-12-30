@@ -14,8 +14,9 @@ from dotenv import load_dotenv
 
 from bottools import BotTools
 from japanese import Japanese
-from constants import *
-from util import Util
+from speedchat.speedchat import Speedchat
+from speedchat_bot.constants import *
+from speedchat_bot.util import Util
 
 load_dotenv()
 
@@ -38,6 +39,7 @@ async def on_ready():
 cli.add_cog(Util(cli))
 cli.add_cog(BotTools(cli))
 cli.add_cog(Japanese(cli))
+cli.add_cog(Speedchat(cli))
 
 if __name__ == "__main__":
     # bind for Heroku

@@ -140,13 +140,10 @@ def getKanjiAndKana(div):
     kanji = ''
     kana = ''
     for child in ul.children:
-        # content = contents.eq(i)
         if child.name == 'li':
             li = child
-            furigana = li.find("span", {"class", 'furigana'}).text if li.find("span", {"class",
-                                                                                       'furigana'}) is not None else None
-            unlifted = li.find("span", {"class", 'unlinked'}).text if li.find("span", {"class",
-                                                                                       'unlinked'}) is not None else None
+            furigana = li.select_one("span.furigana").text if li.select_one("span.furigana") is not None else None
+            unlifted = li.select_one("span.unlinked").text if li.select_one("span.unlinked") is not None else None
 
             if furigana:
                 kanji += unlifted
@@ -501,7 +498,7 @@ class Jisho:
         # self._get_search_response(word)
         self._extract_html(uriForSearch(word))
 
-        results = self.html.find_all(class_="concept_light clearfix")
+        results = self.html.select(".concept_light.clearfix")
         # print(results)
         fmtd_results = []
 
@@ -515,18 +512,18 @@ class Jisho:
                 fmtd_results.append(self._extract_dictionary_information(r))
 
                 # If there are more than 20 results on the page, there is no "More Words" link
-            more = self.html.find(class_="more")
+            more = self.html.select_one(".more")
 
             while more:
                 link = more.get("href")
                 response = requests.get(r"http:" + link, timeout=5)
                 html = BeautifulSoup(response.content, "html.parser")
-                results = html.find_all(class_="concept_light clearfix")
+                results = html.select(".concept_light.clearfix")
 
                 for r in results:
                     fmtd_results.append(self._extract_dictionary_information(r))
 
-                more = html.find(class_="more")
+                more = html.select_one(".more")
 
         return fmtd_results
 
@@ -562,8 +559,7 @@ class Jisho:
     def _extract_dictionary_information(self, entry):
         """Take a dictionary entry from Jisho and return all the necessary information."""
         # Clean up the furigana for the result
-        print(entry.find_all(class_="kanji"))
-        furigana = "".join([f.text for f in entry.find_all(class_="kanji")])
+        furigana = "".join([f.text for f in entry.select(".kanji")])
 
         # Cleans the vocabulary word for the result
         vocabulary = self._get_full_vocabulary_string(entry) if not entry.select(".concept_light-representation .furigana rt") else entry.select_one(".concept_light-representation .furigana rt").text
@@ -580,11 +576,11 @@ class Jisho:
         # I'm satisfied with assuming the whole word corresponds with the whole furigana.
 
         # Grab the difficulty tags for the result
-        diff_tags = [m.text for m in entry.find_all(class_="concept_light-tag label")]
+        diff_tags = [m.text for m in entry.select(".concept_light-tag.label")]
 
         # Grab each of the meanings associated with the result
-        cleaned_meanings = self._isolate_meanings(entry.find(class_="meanings-wrapper"))
-        meanings = [m.find(class_="meaning-meaning") for m in cleaned_meanings]
+        cleaned_meanings = self._isolate_meanings(entry.select_one(".meanings-wrapper"))
+        meanings = [m.select_one(".meaning-meaning") for m in cleaned_meanings]
         meanings_texts = [m.text for m in meanings if m != None]
 
         # Romanize the furigana
@@ -604,15 +600,15 @@ class Jisho:
     def _get_full_vocabulary_string(self, html):
         """Return the full furigana of a word from the html."""
         # The kana represntation of the Jisho entry is contained in this div
-        text_markup = html.find(class_="concept_light-representation")
+        text_markup = html.select_one(".concept_light-representation")
 
-        upper_furigana = text_markup.find(class_="furigana").find_all('span')
+        upper_furigana = text_markup.select_one(".furigana").find_all('span')
 
         # inset_furigana needs more formatting due to potential bits of kanji sticking together
         inset_furigana_list = []
         # For some reason, creating the iterator "inset_furigana" and then accessing it here
         # causes it to change, like observing it causes it to change. I feel like Schrodinger
-        for f in text_markup.find(class_="text").children:
+        for f in text_markup.select_one(".text").children:
             cleaned_text = f.string.replace("\n", "").replace(" ", "")
             if cleaned_text == "":
                 continue

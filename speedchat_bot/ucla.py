@@ -4,7 +4,6 @@ import random
 
 from constants import *
 from perms import *
-from jisho import jisho
 
 
 # Commands for looking up UCLA classes
