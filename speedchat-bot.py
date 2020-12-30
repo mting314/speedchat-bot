@@ -1,6 +1,6 @@
 #! env/bin/python
 #
-# speedchat
+# speedchat-bot
 #
 
 import logging
@@ -13,7 +13,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from bottools import BotTools
-from fun import Fun
+from japanese import Japanese
 from constants import *
 from util import Util
 
@@ -37,7 +37,7 @@ async def on_ready():
 # cog setup
 cli.add_cog(Util(cli))
 cli.add_cog(BotTools(cli))
-cli.add_cog(Fun(cli))
+cli.add_cog(Japanese(cli))
 
 if __name__ == "__main__":
     # bind for Heroku
