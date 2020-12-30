@@ -1,4 +1,4 @@
-readings = [
+_readings = [
     "a", "i", "u", "e", "o", "ka", "ki", "ku", "ke", "ko",
     "ga", "gi", "gu", "ge", "go", "sa", "shi", "su", "se", "so",
     "za", "ji", "zu", "ze", "zo", "ta", "chi", "tsu", "te", "to",
@@ -64,14 +64,14 @@ small_characters = [
     "ァ", "ィ", "ゥ", "ェ", "ォ"
 ]
 
-hira = zip(hiragana, readings)
-kata = zip(katakana, readings)
+hira = zip(hiragana, _readings)
+kata = zip(katakana, _readings)
 
 # Dictionaries for storing kana to English character pairs
-hira2eng = dict(zip(hiragana, readings))
-eng2hira = dict(zip(readings, hiragana))
-kata2eng = dict(zip(katakana, readings))
-eng2kata = dict(zip(readings, katakana))
+hira2eng = dict(zip(hiragana, _readings))
+eng2hira = dict(zip(_readings, hiragana))
+kata2eng = dict(zip(katakana, _readings))
+eng2kata = dict(zip(_readings, katakana))
 
 if __name__ == '__main__':
     print(kata)

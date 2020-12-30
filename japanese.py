@@ -64,11 +64,20 @@ class Japanese(commands.Cog):
     @commands.command(help="Display useful info for a word")
     async def search(self, ctx, kanji: str):
         status = await ctx.send(f"Searching for {kanji}")
-        result = self.j.searchForWord(kanji)
-        for benis in result:
-            await ctx.send(json.dumps(benis, indent=4))
+        response_message = ""
         try:
-            response_message = self.j.searchForKanji(kanji)['strokeOrderSvgUri']
+            result = self.j.searchForPhrase(kanji)
+
+            entry = result['data'][0]
+            jword = entry['japanese'][0]['word']
+            reading = entry['japanese'][0]['reading']
+            # url = result['uri']
+
+            # response_message += f'{jword}({reading}) {url}'
+            response_message += f'{jword}({reading})'
+
+            for index, sense in enumerate(entry['senses']):
+                response_message += f'\n{index + 1}. ' + ', '.join(sense['english_definitions'])
         except TypeError as e:
             print(e)
             await status.edit(content="Sorry, I could not find that.")
@@ -77,27 +86,28 @@ class Japanese(commands.Cog):
         await status.edit(content=response_message)
 
     @commands.command(help="Look up the stroke order for a word")
-    async def stroke(self, ctx, kanji: str):
-        status = await ctx.send(f"Searching for {kanji}'s stroke order.")
+    async def stroke(self, ctx, word: str):
+        status = await ctx.send(f"Searching for {word}'s stroke order.")
         try:
-            response_message = self.j.searchForKanji(kanji)['strokeOrderSvgUri']
+            for kanji in word:
+                await ctx.send(self.j.searchForKanji(kanji)['strokeOrderGifUri'])
         except TypeError as e:
             print(e)
             await status.edit(content="Sorry, I could not find that.")
             return
 
-        await status.edit(content=response_message)
+        # await status.edit(content=response_message)
 
 
-    @commands.command(help="Look up all info for a SINGLE kanji")
+    @commands.command(help="Test again real")
     @is_admin()
-    async def kanji(self, ctx, kanji: str):
+    async def test(self, ctx, kanji: str):
         await ctx.send(f"Mine:")
         status = await ctx.send(f"Searching for {kanji}.")
         # try:
-        result = self.j.searchForWord(kanji)
-        for benis in result:
-            await ctx.send(json.dumps(benis, indent=4))
+        result = self.j.searchForKanji(kanji)
+        # for benis in result:
+        await ctx.send(str(result)[:1999])
         # response_message = json.dumps(self.j.searchForWord(kanji), indent=4)[:1999]
         # response_message2 = json.dumps(self.j.searchForWord(kanji), indent=4)[1999:3999]
         # except TypeError as e:

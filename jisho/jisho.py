@@ -1,30 +1,32 @@
 import requests
 from itertools import zip_longest
 from bs4 import BeautifulSoup
-from .kana import *
+from .kana import hiragana, katakana, small_characters, hira2eng, kata2eng
 import re
 import urllib
 import html
+import json
 
 ONYOMI_LOCATOR_SYMBOL = 'On'
 KUNYOMI_LOCATOR_SYMBOL = 'Kun'
 
 JISHO_API = 'https://jisho.org/api/v1/search/words'
-SCRAPE_BASE_URI = 'https://jisho.org/search/'
+SCRAPE_BASE_URI = 'jisho.org/search/'
 STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_diagrams/'
 
 
 def remove_new_lines(my_string):
     return re.sub('/(?:\r|\n)/g', '', my_string).strip()
 
+def uriForKanjiSearch(kanji):
+    return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#kanji')
 
 # I'm 99% sure this is bugged/doesn't work anymore because classic.jisho.org doesn't seem to exist anymore
 def getUriForStrokeOrderDiagram(kanji):
-    return f'{STROKE_ORDER_DIAGRAM_BASE_URI}{str(ord(kanji))}_frames.png'
+    return STROKE_ORDER_DIAGRAM_BASE_URI + kanji.encode("unicode-escape").decode("utf-8").replace("\\u", '') + '_frames.png'
 
-
-def uriForKanjiSearch(kanji):
-    return f'{SCRAPE_BASE_URI}{urllib.parse.quote(kanji)}%23kanji'
+def uriForPhraseSearch(phrase):
+    return f'{JISHO_API}?keyword={urllib.parse.quote(phrase)}'
 
 
 def contains_kanji_glyph(page_html, kanji):
@@ -39,15 +41,13 @@ def get_string_between_strings(data, start_string, end_string):
 
     return match[1] if match is not None else None
 
-
-def getNewspaperFrequencyRank(page_html):
-    frequency_section = get_string_between_strings(page_html, '<div class="frequency">', '</div>')
-    return frequency_section if get_string_between_strings(frequency_section, '<strong>', '</strong>') else None
-
-
 def getIntBetweenStrings(page_html, start_string, end_string):
     string_between_strings = get_string_between_strings(page_html, start_string, end_string)
     return int(string_between_strings) if string_between_strings else None
+
+def getNewspaperFrequencyRank(page_html):
+    frequency_section = get_string_between_strings(page_html, '<div class="frequency">', '</div>')
+    return get_string_between_strings(frequency_section, '<strong>', '</strong>') if frequency_section else None
 
 
 def parseAnchorsToArray(my_string):
@@ -74,7 +74,7 @@ def get_yomi_examples(page_html, yomiLocatorSymbol):
     if not example_section:
         return []
 
-    regex = '<li>(.*?)<\/li>'
+    regex = r'<li>(.*?)</li>'
     regex_results = map(lambda x: x.strip(), re.findall(regex, example_section, re.DOTALL))
 
     for example in regex_results:
@@ -98,10 +98,8 @@ def get_kunyomi_examples(page_html):
 def get_radical(page_html):
     radicalMeaningStartString = '<span class="radical_meaning">'
     radicalMeaningEndString = '</span>'
-    #
-    # radicalMeaning = get_string_between_strings(page_html, radicalMeaningStartString, radicalMeaningEndString).strip()
 
-    radicalMeaning = page_html.find("span", {"class", "radical_meaning"})
+    radicalMeaning = page_html.select_one("span.radical_meaning")
 
     # TODO: Improve this? I don't like all the string finding that much, rather do it with BS finding
     if radicalMeaning:
@@ -115,14 +113,14 @@ def get_radical(page_html):
         radicalSymbolEndString = '</span>'
         radicalSymbolEndIndex = page_html_string.find(radicalSymbolEndString, radicalSymbolStartIndex)
 
-        radicalSymbolsString = page_html_string[radicalSymbolStartIndex:radicalSymbolEndIndex]
+        radicalSymbolsString = page_html_string[radicalSymbolStartIndex:radicalSymbolEndIndex].replace("\n", '').strip()
 
         if len(radicalSymbolsString) > 1:
             radicalForms = radicalSymbolsString[1:].replace('(', '').replace(')', '').strip().split(', ')
 
             return {'symbol': radicalSymbolsString[0], 'forms': radicalForms, 'meaning': radicalMeaning.string.strip()}
 
-        return {'symbol': radicalSymbolsString, 'meaning': radicalMeaning}
+        return {'symbol': radicalSymbolsString, 'meaning': radicalMeaning.text.replace("\n", '').strip()}
 
     return None
 
@@ -135,16 +133,15 @@ def getParts(page_html):
 
 
 def get_svg_uri(page_html):
-    svgRegex = '/\/\/.*?.cloudfront.net\/.*?.svg/'
-    regexResult = re.search(svgRegex, str(page_html))
-    return f'https:{regexResult[0]}' if regexResult else None
+    svgRegex = re.compile(r"var url = \'//(.*?cloudfront\.net/.*?.svg)")
+    regexResult = svgRegex.search(str(page_html))
+    return f'https://{regexResult[1]}' if regexResult else None
 
 
 def getGifUri(kanji):
-    for char in kanji:
-        fileName = f'{str(ord(char))}.gif'
-        animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
-        yield animationUri
+    fileName = kanji.encode("unicode-escape").decode("utf-8").replace("\\u", '') + '.gif'
+    animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
+    return animationUri
 
 
 def kana_to_halpern(untrans):
@@ -180,17 +177,20 @@ def kana_to_halpern(untrans):
     return "".join(halpern)
 
 
-def parse_kanji_page_data(page_html, kanji):
+def parse_kanji_page_data(page_html, kanji, depth):
     result = {'query': kanji, 'found': contains_kanji_glyph(page_html, kanji)}
     if not result['found']:
         return result
+
 
     result['taughtIn'] = get_string_between_strings(page_html, 'taught in <strong>', '</strong>')
     result['jlptLevel'] = get_string_between_strings(page_html, 'JLPT level <strong>', '</strong>')
     result['newspaperFrequencyRank'] = getNewspaperFrequencyRank(page_html)
     result['strokeCount'] = getIntBetweenStrings(page_html, '<strong>', '</strong> strokes')
-    result['meaning'] = html.unescape(remove_new_lines(
-        get_string_between_strings(page_html, '<div class="kanji-details__main-meanings">', '</div>')).strip())
+
+    result['meaning'] = html.unescape(
+        get_string_between_strings(page_html, '<div class="kanji-details__main-meanings">', '</div>')).strip().replace("\n", '')
+
     result['kunyomi'] = get_kunyomi(page_html)
     result['onyomi'] = get_onyomi(page_html)
     result['onyomiExamples'] = list(get_onyomi_examples(page_html))
@@ -199,20 +199,61 @@ def parse_kanji_page_data(page_html, kanji):
     result['parts'] = getParts(page_html)
     result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
     result['strokeOrderSvgUri'] = get_svg_uri(page_html)
-    result['strokeOrderGifUri'] = list(getGifUri(kanji))
+    result['strokeOrderGifUri'] = getGifUri(kanji)
     result['uri'] = uriForKanjiSearch(kanji)
     return result
 
+def _get_full_vocabulary_string(html):
+    """Return the full furigana of a word from the html."""
+    # The kana represntation of the Jisho entry is contained in this div
+    text_markup = html.find(class_="concept_light-representation")
+
+    upper_furigana = text_markup.find(class_="furigana").find_all('span')
+    inset_furigana = text_markup.find(class_="text").children
+
+    # inset_furigana needs more formatting due to potential bits of kanji sticking together
+    inset_furigana_list = []
+    for f in inset_furigana:
+        cleaned_text = f.string.replace("\n", "").replace(" ", "")
+        if cleaned_text == "":
+            continue
+        elif len(cleaned_text) > 1:
+            for s in cleaned_text:
+                inset_furigana_list.append(s)
+        else:
+            inset_furigana_list.append(cleaned_text)
+
+    children = zip_longest(upper_furigana, inset_furigana_list)
+
+    full_word = []
+    for c in children:
+        if c[0].text != '':
+            full_word.append(c[0].text)
+        elif c[0].text == '' and contains_kana(c[1]):
+            full_word.append(c[1])
+        else:
+            continue
+
+    # print(''.join(full_word))
+    # print("====")
+    return ''.join(full_word)
+
+def contains_kana(word):
+    """Takes a word and returns true if there are hiragana or katakana present within the word"""
+    for k in word:
+        if k in hiragana or k in katakana or k in small_characters:
+            return True
+    return False
 
 kanjiRegex = '[\u4e00-\u9faf\u3400-\u4dbf]'
 
 
 def uriForExampleSearch(phrase):
-    return f'{SCRAPE_BASE_URI}{urllib.parse.quote(phrase)}%23sentences'
+    return "http://" +  urllib.parse.quote(f'{SCRAPE_BASE_URI}{phrase}#sentences')
 
 
 def getKanjiAndKana(div):
-    ul = div.find_all('ul')[0]
+    ul = div.select_one('ul')
     # contents = ul.contents()
 
     kanji = ''
@@ -251,17 +292,14 @@ def getKanjiAndKana(div):
 
 
 def getPieces(sentenceElement):
-    pieceElements = sentenceElement.find_all("li", {"class", "clearfix"}) + sentenceElement.find_all("el")
+    pieceElements = sentenceElement.select("li.clearfix") + sentenceElement.select("el")
     pieces = []
 
     for pieceElement in pieceElements:
-        # pieceElement = pieceElements.eq(pieceIndex)
         if pieceElement.name == 'li':
             pieces.append({
-                'lifted': pieceElement.find("span", {"class", 'furigana'}).text if pieceElement.find("span", {"class",
-                                                                                                              'furigana'}) is not None else '',
-                'unlifted': pieceElement.find("span", {"class", 'unlinked'}).text if pieceElement.find("span", {"class",
-                                                                                                                'unlinked'}) is not None else '',
+                'lifted': pieceElement.select_one("span.furigana").text if pieceElement.select_one("span.furigana") is not None else '',
+                'unlifted': pieceElement.select_one("span.unlinked").text if pieceElement.select_one("span.unlinked") is not None else '',
             })
         else:
             pieces.append({
@@ -273,18 +311,18 @@ def getPieces(sentenceElement):
 
 
 def parseExampleDiv(div):
-    english = str(div.find('span', {"class", 'english'}).find(text=True))
+    english = str(div.select_one('span.english').find(text=True))
     kanji, kana = getKanjiAndKana(div)
 
     return english, kanji, kana, getPieces(div)
 
 
-def parseExamplePageData(pageHtml, phrase):
+def parse_example_page_data(pageHtml, phrase):
     string_page_html = str(pageHtml)
-    pageHtmlReplaced = re.sub(
-        '<\/li>\s*([^\s<>]+)\s*<li class="clearfix">/g', r'</li><el>\1</el><li class="clearfix">', string_page_html)
-    myhtml = BeautifulSoup(pageHtmlReplaced, 'lxml')
-    divs = myhtml.find_all("div", {"class", 'sentence_content'})
+    # pageHtmlReplaced = re.sub(
+        # r'</li>\s*([^\s<>]+)\s*<li class="clearfix">', r'</li><el>\1</el><li class="clearfix">', string_page_html)
+    # myhtml = BeautifulSoup(pageHtmlReplaced, 'lxml')
+    divs = pageHtml.select("div.sentence_content")
 
     results = []
     for div in divs:
@@ -302,12 +340,11 @@ def parseExamplePageData(pageHtml, phrase):
 
 # PHRASE SCRAPE FUNCTIONS START
 
-def getTags(my_html):
+def get_tags(my_html):
     tags = []
 
-    tagElements = my_html.find_all("span", {"class", 'concept_light-tag'})
+    tagElements = my_html.select("span.concept_light-tag")
     for tagElement in tagElements:
-        # tagText = tagElements.eq(i).text()
         tags.append(tagElement.text)
 
     return tags
@@ -317,14 +354,13 @@ def getMeaningsOtherFormsAndNotes(my_html):
     otherForms = []
     notes = []
 
-    meaningsWrapper = my_html.select(
-        '#page_container > div > div > article > div > div.concept_light-meanings.medium-9.columns > div')[0]
+    meaningsWrapper = my_html.select_one(
+        '#page_container > div > div > article > div > div.concept_light-meanings.medium-9.columns > div')
     meaningsChildren = meaningsWrapper.children
     meanings = []
 
     mostRecentWordTypes = []
     for child in meaningsChildren:
-        # child = meaningsChildren.eq(meaningIndex)
         if child.get("class")[0] == 'meaning-tags':
             mostRecentWordTypes = list(map(lambda x: x.strip().lower(), child.text.split(',')))
         elif mostRecentWordTypes[0] == 'other forms':
@@ -334,13 +370,12 @@ def getMeaningsOtherFormsAndNotes(my_html):
         elif mostRecentWordTypes[0] == 'notes':
             notes = child.text().split('\n')
         else:
-            meaning = child.find("span", {"class", 'meaning-meaning'}).text
+            meaning = child.select_one("span.meaning-meaning").text
             try:
-                child.select('.meaning-abstract')[0].select('a')[0].extract().end()
-                meaningAbstract = child.select('.meaning-abstract')[0].text
-            except IndexError:
+                child.select_one('.meaning-abstract').select_one('a').extract().end()
+                meaningAbstract = child.select_one('.meaning-abstract').text
+            except AttributeError:
                 meaningAbstract = ''
-            # meaningAbstract = child.select('.meaning-abstract')[0].select('a').remove().end().text
 
             try:
                 supplemental = list(filter(lambda y: bool(y),
@@ -359,14 +394,15 @@ def getMeaningsOtherFormsAndNotes(my_html):
             sentenceElements = child.select_one("span.sentences > div.sentence") or []
 
             for sentenceElement in sentenceElements:
-                # sentenceElement = sentenceElements.eq(sentenceIndex)
 
-                english = sentenceElement.find("li", {"class", 'english'}).text
+                english = sentenceElement.select_one("li.english").text
                 pieces = getPieces(sentenceElement)
 
                 # remove english and furigana to get left with normal japanese
-                sentenceElement.find("li", {"class", 'english'}).extract()
-                sentenceElement.find("span", {"class", "furigana"}).extract()
+                sentenceElement.select_one("li.english").extract()
+                # could (will) be multiple furiganas
+                for s in sentenceElement.select("span.furigana"):
+                    s.extract()
 
                 japanese = sentenceElement.text
 
@@ -384,7 +420,7 @@ def getMeaningsOtherFormsAndNotes(my_html):
     return meanings, otherForms, notes
 
 
-def uriForPhraseScrape(searchTerm):
+def uri_for_phrase_scrape(searchTerm):
     return f'https://jisho.org/word/{urllib.parse.quote(searchTerm)}'
 
 
@@ -395,8 +431,8 @@ def parsePhrasePageData(pageHtml, query):
     result = {
         'found': True,
         'query': query,
-        'uri': uriForPhraseScrape(query),
-        'tags': getTags(my_html),
+        'uri': uri_for_phrase_scrape(query),
+        'tags': get_tags(my_html),
         'meanings': meanings,
         'other_forms': otherForms,
         'notes': notes
@@ -405,12 +441,13 @@ def parsePhrasePageData(pageHtml, query):
     return result
 
 
+
+
 class Jisho:
     """A class to interface with Jisho.org and store search results for use.
 
     """
 
-    JISHO_API = 'https://jisho.org/api/v1/search/words'
     SCRAPE_BASE_URI = 'https://jisho.org/search/'
     STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_diagrams/'
 
@@ -418,21 +455,26 @@ class Jisho:
         self.html = None
         self.response = None
 
-    def searchForKanji(self, kanji):
+    def searchForPhrase(self, phrase):
+        """Directly use Jisho's official API to get info on a phrase (can be multiple characters)"""
+        uri = uriForPhraseSearch(phrase)
+        return json.loads(requests.get(uri).content)
+
+    def searchForKanji(self, kanji, depth = "shallow"):
+        """Return lots of information for a *single* character"""
         uri = uriForKanjiSearch(kanji)
         page = requests.get(uri)
         soup = BeautifulSoup(page.content, 'lxml')
-        return parse_kanji_page_data(soup, kanji)
+        return parse_kanji_page_data(soup, kanji, depth)
 
     def searchForExamples(self, phrase):
         uri = uriForExampleSearch(phrase)
         page = requests.get(uri)
         soup = BeautifulSoup(page.content, 'lxml')
-        return parseExamplePageData(soup, phrase)
+        return parse_example_page_data(soup, phrase)
 
-    @staticmethod
-    async def scrapeForPhrase(phrase):
-        uri = uriForPhraseScrape(phrase)
+    def scrapeForPhrase(self, phrase):
+        uri = uri_for_phrase_scrape(phrase)
         try:
             response = requests.get(uri)
             return parsePhrasePageData(response.content, phrase)
@@ -445,23 +487,15 @@ class Jisho:
 
             raise err
 
-    def contains_kana(self, word):
-        """Takes a word and returns true if there are hiragana or katakana present within the word"""
-        for k in word:
-            if k in hiragana or k in katakana or k in small_characters:
-                return True
-        return False
 
-    def _get_search_response(self, word="", filters=["words"]):
+
+    def _get_search_response(self, word=""):
         """Takes a word, stores it within the Jisho object, and returns parsed HTML"""
         base_url = r"https://jisho.org/search/"
 
         # Take all the filters and append them to the base_url
-        base_url += word
-        for filter in filters:
-            base_url += r"%20%23" + filter
-        # print(base_url + word)
-        self.response = requests.get(base_url + word, timeout=5)
+        base_url += word + "words"
+        self.response = requests.get(base_url, timeout=5)
         return self.response
 
     def _extract_html(self):
@@ -469,12 +503,12 @@ class Jisho:
         self.html = BeautifulSoup(self.response.content, "html.parser")
         return self.html
 
-    def jsearch(self, word, filters=["words"], depth="shallow"):
+    def searchForWord(self, word, depth="shallow"):
         """Take a japanese word and spit out well-formatted dictionaries for each entry.
         
         """
 
-        self._get_search_response(word, filters)
+        self._get_search_response(word)
         self._extract_html()
 
         results = self.html.find_all(class_="concept_light clearfix")
@@ -538,10 +572,22 @@ class Jisho:
     def _extract_dictionary_information(self, entry):
         """Take a dictionary entry from Jisho and return all the necessary information."""
         # Clean up the furigana for the result
+        print(entry.find_all(class_="kanji"))
         furigana = "".join([f.text for f in entry.find_all(class_="kanji")])
 
         # Cleans the vocabulary word for the result
-        vocabulary = self._get_full_vocabulary_string(entry)
+        vocabulary = self._get_full_vocabulary_string(entry) if not entry.select(".concept_light-representation .furigana rt") else entry.select_one(".concept_light-representation .furigana rt").text
+
+        # The fact that this needs to exist is really annoying.
+        # If you go to a page like this: https://jisho.org/word/%E5%8D%B0%E5%BA%A6
+        # you'll see that this is a word whose furigana is actually in katakana
+        # I didn't realize this happens (it makes sense now), and the huge issue
+        # is that there's different HTML in this case, so the previous parsing method
+        # doesn't work, so we need a new method...
+
+        # Now there could be *really* weird cases where there's a word with both
+        # katakana furigana and hiragana furigana (which would be cool), but tbh this
+        # I'm satisfied with assuming the whole word corresponds with the whole furigana.
 
         # Grab the difficulty tags for the result
         diff_tags = [m.text for m in entry.find_all(class_="concept_light-tag label")]
@@ -552,7 +598,7 @@ class Jisho:
         meanings_texts = [m.text for m in meanings if m != None]
 
         # Romanize the furigana
-        # halpern = self.kana_to_halpern(furigana)
+        halpern = kana_to_halpern(furigana)
 
         information = {
             "furigana": furigana,
@@ -560,7 +606,7 @@ class Jisho:
             "difficulty_tags": diff_tags,
             "meanings": dict(zip(range(1, len(meanings_texts) + 1), meanings_texts)),
             "n_meanings": len(meanings_texts),
-            # "halpern": halpern
+            "halpern": halpern
         }
 
         return information
@@ -571,11 +617,12 @@ class Jisho:
         text_markup = html.find(class_="concept_light-representation")
 
         upper_furigana = text_markup.find(class_="furigana").find_all('span')
-        inset_furigana = text_markup.find(class_="text").children
 
         # inset_furigana needs more formatting due to potential bits of kanji sticking together
         inset_furigana_list = []
-        for f in inset_furigana:
+        # For some reason, creating the iterator "inset_furigana" and then accessing it here
+        # causes it to change, like observing it causes it to change. I feel like Schrodinger
+        for f in text_markup.find(class_="text").children:
             cleaned_text = f.string.replace("\n", "").replace(" ", "")
             if cleaned_text == "":
                 continue
@@ -591,7 +638,7 @@ class Jisho:
         for c in children:
             if c[0].text != '':
                 full_word.append(c[0].text)
-            elif c[0].text == '' and self.contains_kana(c[1]):
+            elif c[0].text == '' and contains_kana(c[1]):
                 full_word.append(c[1])
             else:
                 continue
@@ -603,4 +650,4 @@ class Jisho:
 
 if __name__ == '__main__':
     j = Jisho()
-    # j.get_stroke_order("草")
+    j.searchForKanji("草")
