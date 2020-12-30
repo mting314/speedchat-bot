@@ -18,8 +18,11 @@ STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_
 def remove_new_lines(my_string):
     return re.sub('/(?:\r|\n)/g', '', my_string).strip()
 
-def uriForKanjiSearch(kanji):
-    return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#kanji')
+def uriForSearch(kanji, filter = "words"):
+    return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#{filter}')
+
+# def uriForKanjiSearch(kanji):
+#     return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#kanji')
 
 # I'm 99% sure this is bugged/doesn't work anymore because classic.jisho.org doesn't seem to exist anymore
 def getUriForStrokeOrderDiagram(kanji):
@@ -28,12 +31,6 @@ def getUriForStrokeOrderDiagram(kanji):
 def uriForPhraseSearch(phrase):
     return f'{JISHO_API}?keyword={urllib.parse.quote(phrase)}'
 
-
-def contains_kanji_glyph(page_html, kanji):
-    kanjiGlyphToken = f'<h1 class="character" data-area-name="print" lang="ja">{kanji}</h1>'
-    return kanjiGlyphToken in str(page_html)
-
-
 def get_string_between_strings(data, start_string, end_string):
     regex = f'{re.escape(start_string)}(.*?){re.escape(end_string)}'
     # Need DOTALL because the HTML still has its newline characters
@@ -41,101 +38,10 @@ def get_string_between_strings(data, start_string, end_string):
 
     return match[1] if match is not None else None
 
-def getIntBetweenStrings(page_html, start_string, end_string):
-    string_between_strings = get_string_between_strings(page_html, start_string, end_string)
-    return int(string_between_strings) if string_between_strings else None
-
-def getNewspaperFrequencyRank(page_html):
-    frequency_section = get_string_between_strings(page_html, '<div class="frequency">', '</div>')
-    return get_string_between_strings(frequency_section, '<strong>', '</strong>') if frequency_section else None
-
 
 def parseAnchorsToArray(my_string):
     regex = r'<a href=".*?">(.*?)</a>'
     return re.findall(regex, my_string)
-
-
-def get_yomi(page_html, yomiLocatorSymbol):
-    yomi_section = get_string_between_strings(page_html, f'<dt>{yomiLocatorSymbol}:</dt>', '</dl>')
-    return parseAnchorsToArray(yomi_section) or ''
-
-
-def get_kunyomi(page_html):
-    return get_yomi(page_html, KUNYOMI_LOCATOR_SYMBOL)
-
-
-def get_onyomi(page_html):
-    return get_yomi(page_html, ONYOMI_LOCATOR_SYMBOL)
-
-
-def get_yomi_examples(page_html, yomiLocatorSymbol):
-    locator_string = f'<h2>{yomiLocatorSymbol} reading compounds</h2>'
-    example_section = get_string_between_strings(page_html, locator_string, '</ul>')
-    if not example_section:
-        return []
-
-    regex = r'<li>(.*?)</li>'
-    regex_results = map(lambda x: x.strip(), re.findall(regex, example_section, re.DOTALL))
-
-    for example in regex_results:
-        example_lines = list(map(lambda x: x.strip(), example.split('\n')))
-
-        yield {
-            'example': example_lines[0],
-            'reading': example_lines[1].replace('【', '').replace('】', ''),
-            'meaning': html.unescape(example_lines[2]),
-        }
-
-
-def get_onyomi_examples(page_html):
-    return get_yomi_examples(page_html, ONYOMI_LOCATOR_SYMBOL)
-
-
-def get_kunyomi_examples(page_html):
-    return get_yomi_examples(page_html, KUNYOMI_LOCATOR_SYMBOL)
-
-
-def get_radical(page_html):
-    radicalMeaningStartString = '<span class="radical_meaning">'
-    radicalMeaningEndString = '</span>'
-
-    radicalMeaning = page_html.select_one("span.radical_meaning")
-
-    # TODO: Improve this? I don't like all the string finding that much, rather do it with BS finding
-    if radicalMeaning:
-        page_html_string = str(page_html)
-
-        radicalMeaningStartIndex = page_html_string.find(radicalMeaningStartString)
-
-        radicalMeaningEndIndex = page_html_string.find(radicalMeaningEndString, radicalMeaningStartIndex)
-
-        radicalSymbolStartIndex = radicalMeaningEndIndex + len(radicalMeaningEndString)
-        radicalSymbolEndString = '</span>'
-        radicalSymbolEndIndex = page_html_string.find(radicalSymbolEndString, radicalSymbolStartIndex)
-
-        radicalSymbolsString = page_html_string[radicalSymbolStartIndex:radicalSymbolEndIndex].replace("\n", '').strip()
-
-        if len(radicalSymbolsString) > 1:
-            radicalForms = radicalSymbolsString[1:].replace('(', '').replace(')', '').strip().split(', ')
-
-            return {'symbol': radicalSymbolsString[0], 'forms': radicalForms, 'meaning': radicalMeaning.string.strip()}
-
-        return {'symbol': radicalSymbolsString, 'meaning': radicalMeaning.text.replace("\n", '').strip()}
-
-    return None
-
-
-def getParts(page_html):
-    partsSection = page_html.find("dt", text="Parts:").find_next_sibling('dd')
-    result = parseAnchorsToArray(str(partsSection))
-    result.sort()
-    return result
-
-
-def get_svg_uri(page_html):
-    svgRegex = re.compile(r"var url = \'//(.*?cloudfront\.net/.*?.svg)")
-    regexResult = svgRegex.search(str(page_html))
-    return f'https://{regexResult[1]}' if regexResult else None
 
 
 def getGifUri(kanji):
@@ -177,31 +83,6 @@ def kana_to_halpern(untrans):
     return "".join(halpern)
 
 
-def parse_kanji_page_data(page_html, kanji, depth):
-    result = {'query': kanji, 'found': contains_kanji_glyph(page_html, kanji)}
-    if not result['found']:
-        return result
-
-
-    result['taughtIn'] = get_string_between_strings(page_html, 'taught in <strong>', '</strong>')
-    result['jlptLevel'] = get_string_between_strings(page_html, 'JLPT level <strong>', '</strong>')
-    result['newspaperFrequencyRank'] = getNewspaperFrequencyRank(page_html)
-    result['strokeCount'] = getIntBetweenStrings(page_html, '<strong>', '</strong> strokes')
-
-    result['meaning'] = html.unescape(
-        get_string_between_strings(page_html, '<div class="kanji-details__main-meanings">', '</div>')).strip().replace("\n", '')
-
-    result['kunyomi'] = get_kunyomi(page_html)
-    result['onyomi'] = get_onyomi(page_html)
-    result['onyomiExamples'] = list(get_onyomi_examples(page_html))
-    result['kunyomiExamples'] = list(get_kunyomi_examples(page_html))
-    result['radical'] = get_radical(page_html)
-    result['parts'] = getParts(page_html)
-    result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
-    result['strokeOrderSvgUri'] = get_svg_uri(page_html)
-    result['strokeOrderGifUri'] = getGifUri(kanji)
-    result['uri'] = uriForKanjiSearch(kanji)
-    return result
 
 def _get_full_vocabulary_string(html):
     """Return the full furigana of a word from the html."""
@@ -248,8 +129,8 @@ def contains_kana(word):
 kanjiRegex = '[\u4e00-\u9faf\u3400-\u4dbf]'
 
 
-def uriForExampleSearch(phrase):
-    return "http://" +  urllib.parse.quote(f'{SCRAPE_BASE_URI}{phrase}#sentences')
+# def uriForExampleSearch(phrase):
+#     return "http://" +  urllib.parse.quote(f'{SCRAPE_BASE_URI}{phrase}#sentences')
 
 
 def getKanjiAndKana(div):
@@ -333,7 +214,7 @@ def parse_example_page_data(pageHtml, phrase):
         'query': phrase,
         'found': len(results) > 0,
         'result': results,
-        'uri': uriForExampleSearch(phrase),
+        'uri': uriForSearch(phrase, filter="sentences"),
         'phrase': phrase
     }
 
@@ -448,9 +329,6 @@ class Jisho:
 
     """
 
-    SCRAPE_BASE_URI = 'https://jisho.org/search/'
-    STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_diagrams/'
-
     def __init__(self):
         self.html = None
         self.response = None
@@ -462,16 +340,14 @@ class Jisho:
 
     def searchForKanji(self, kanji, depth = "shallow"):
         """Return lots of information for a *single* character"""
-        uri = uriForKanjiSearch(kanji)
-        page = requests.get(uri)
-        soup = BeautifulSoup(page.content, 'lxml')
-        return parse_kanji_page_data(soup, kanji, depth)
+        uri = uriForSearch(kanji, filter="kanji")
+        self._extract_html(uri)
+        return self.parse_kanji_page_data(kanji, depth)
 
     def searchForExamples(self, phrase):
-        uri = uriForExampleSearch(phrase)
-        page = requests.get(uri)
-        soup = BeautifulSoup(page.content, 'lxml')
-        return parse_example_page_data(soup, phrase)
+        uri = uriForSearch(phrase, filter="sentences")
+        self._extract_html(uri)
+        return parse_example_page_data(self.html, phrase)
 
     def scrapeForPhrase(self, phrase):
         uri = uri_for_phrase_scrape(phrase)
@@ -488,28 +364,142 @@ class Jisho:
             raise err
 
 
+    def contains_kanji_glyph(self, kanji):
+        kanjiGlyphToken = f'<h1 class="character" data-area-name="print" lang="ja">{kanji}</h1>'
+        return kanjiGlyphToken in str(self.html)
 
-    def _get_search_response(self, word=""):
-        """Takes a word, stores it within the Jisho object, and returns parsed HTML"""
-        base_url = r"https://jisho.org/search/"
 
-        # Take all the filters and append them to the base_url
-        base_url += word + "words"
-        self.response = requests.get(base_url, timeout=5)
-        return self.response
+    def getIntBetweenStrings(self, start_string, end_string):
+        string_between_strings = get_string_between_strings(self.html, start_string, end_string)
+        return int(string_between_strings) if string_between_strings else None
 
-    def _extract_html(self):
+    def getNewspaperFrequencyRank(self):
+        frequency_section = get_string_between_strings(self.html, '<div class="frequency">', '</div>')
+        return get_string_between_strings(frequency_section, '<strong>', '</strong>') if frequency_section else None
+
+    def get_yomi(self, page_html, yomiLocatorSymbol):
+        yomi_section = get_string_between_strings(self.html, f'<dt>{yomiLocatorSymbol}:</dt>', '</dl>')
+        return parseAnchorsToArray(yomi_section) or ''
+
+
+    def get_kunyomi(self):
+        return self.get_yomi(self.html, KUNYOMI_LOCATOR_SYMBOL)
+
+
+    def get_onyomi(self):
+        return self.get_yomi(self.html, ONYOMI_LOCATOR_SYMBOL)
+
+
+    def get_yomi_examples(self, yomiLocatorSymbol):
+        locator_string = f'<h2>{yomiLocatorSymbol} reading compounds</h2>'
+        example_section = get_string_between_strings(self.html, locator_string, '</ul>')
+        if not example_section:
+            return []
+
+        regex = r'<li>(.*?)</li>'
+        regex_results = map(lambda x: x.strip(), re.findall(regex, example_section, re.DOTALL))
+
+        for example in regex_results:
+            example_lines = list(map(lambda x: x.strip(), example.split('\n')))
+
+            yield {
+                'example': example_lines[0],
+                'reading': example_lines[1].replace('【', '').replace('】', ''),
+                'meaning': html.unescape(example_lines[2]),
+            }
+
+
+    def get_onyomi_examples(self):
+        return self.get_yomi_examples(ONYOMI_LOCATOR_SYMBOL)
+
+
+    def get_kunyomi_examples(self):
+        return self.get_yomi_examples(KUNYOMI_LOCATOR_SYMBOL)
+
+
+    def get_radical(self):
+        radicalMeaningStartString = '<span class="radical_meaning">'
+        radicalMeaningEndString = '</span>'
+
+        radicalMeaning = self.html.select_one("span.radical_meaning")
+
+        # TODO: Improve this? I don't like all the string finding that much, rather do it with BS finding
+        if radicalMeaning:
+            page_html_string = str(self.html)
+
+            radicalMeaningStartIndex = page_html_string.find(radicalMeaningStartString)
+
+            radicalMeaningEndIndex = page_html_string.find(radicalMeaningEndString, radicalMeaningStartIndex)
+
+            radicalSymbolStartIndex = radicalMeaningEndIndex + len(radicalMeaningEndString)
+            radicalSymbolEndString = '</span>'
+            radicalSymbolEndIndex = page_html_string.find(radicalSymbolEndString, radicalSymbolStartIndex)
+
+            radicalSymbolsString = page_html_string[radicalSymbolStartIndex:radicalSymbolEndIndex].replace("\n", '').strip()
+
+            if len(radicalSymbolsString) > 1:
+                radicalForms = radicalSymbolsString[1:].replace('(', '').replace(')', '').strip().split(', ')
+
+                return {'symbol': radicalSymbolsString[0], 'forms': radicalForms, 'meaning': radicalMeaning.string.strip()}
+
+            return {'symbol': radicalSymbolsString, 'meaning': radicalMeaning.text.replace("\n", '').strip()}
+
+        return None
+
+
+    def getParts(self):
+        partsSection = self.html.find("dt", text="Parts:").find_next_sibling('dd')
+        result = parseAnchorsToArray(str(partsSection))
+        result.sort()
+        return result
+
+
+    def get_svg_uri(self):
+        svgRegex = re.compile(r"var url = \'//(.*?cloudfront\.net/.*?.svg)")
+        regexResult = svgRegex.search(str(self.html))
+        return f'https://{regexResult[1]}' if regexResult else None
+
+
+
+    def parse_kanji_page_data(self, kanji, depth):
+        result = {'query': kanji, 'found': self.contains_kanji_glyph(kanji)}
+        if not result['found']:
+            return result
+
+
+        result['taughtIn'] = get_string_between_strings(self.html, 'taught in <strong>', '</strong>')
+        result['jlptLevel'] = get_string_between_strings(self.html, 'JLPT level <strong>', '</strong>')
+        result['newspaperFrequencyRank'] = self.getNewspaperFrequencyRank()
+        result['strokeCount'] = self.getIntBetweenStrings('<strong>', '</strong> strokes')
+
+        result['meaning'] = html.unescape(
+            get_string_between_strings(self.html, '<div class="kanji-details__main-meanings">', '</div>')).strip().replace("\n", '')
+
+        result['kunyomi'] = self.get_kunyomi()
+        result['onyomi'] = self.get_onyomi()
+        result['onyomiExamples'] = list(self.get_onyomi_examples())
+        result['kunyomiExamples'] = list(self.get_kunyomi_examples())
+        result['radical'] = self.get_radical()
+        result['parts'] = self.getParts()
+        result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
+        result['strokeOrderSvgUri'] = self.get_svg_uri()
+        result['strokeOrderGifUri'] = getGifUri(kanji)
+        result['uri'] = uriForSearch(kanji, filter="kanji")
+        return result
+
+    def _extract_html(self, url):
         """With the response, extract the HTML and store it into the object."""
-        self.html = BeautifulSoup(self.response.content, "html.parser")
-        return self.html
+        self.response = requests.get(url, timeout=5)
+        self.html = BeautifulSoup(self.response.content, "lxml") if self.response.ok else None
+        # return self.html
 
     def searchForWord(self, word, depth="shallow"):
         """Take a japanese word and spit out well-formatted dictionaries for each entry.
         
         """
 
-        self._get_search_response(word)
-        self._extract_html()
+        # self._get_search_response(word)
+        self._extract_html(uriForSearch(word))
 
         results = self.html.find_all(class_="concept_light clearfix")
         # print(results)
