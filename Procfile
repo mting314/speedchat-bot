@@ -1,1 +1,1 @@
-web: python speedchat.py
+web: python speedchat-bot.py
