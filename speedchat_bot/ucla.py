@@ -1,6 +1,11 @@
 import discord
 from discord.ext import commands
 import random
+import json
+import urllib
+
+import asyncio
+from pyppeteer import launch
 
 from constants import *
 from perms import *
@@ -10,40 +15,47 @@ from perms import *
 class UCLA(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.j = jisho.Jisho()
+        f = open('speedchat_bot/subjects.json') 
+        self.subjectsJSON = json.load(f)
 
+    def _getURL(self, subject):
+        # if we can find it in the list of subjects
+        if subject in [pair['value'] for pair in self.subjectsJSON]:
+            formattedCode = urllib.parse.quote(subject).replace('%20', '+')
+            return f'https://sa.ucla.edu/ro/Public/SOC/Results?t=19F&sBy=subject&subj={formattedCode}'
+        else:
+            return None
+            
     @commands.command(help="Look up a stroke order for a SINGLE kanji")
     @is_admin()
-    async def getclass(self, ctx, *, kanji: str, meaning_num: int = 0):
-        status = await ctx.send(f"Searching for {kanji}.")
-        try:
-            response_message = self.j.get_stroke_order(kanji)
-        except TypeError:
-            response_message = "Sorry, I could not find that."
-            await status.edit(content=response_message)
+    async def searchclass(self, ctx, subject: str):
+        status = await ctx.send(f"Searching for {subject}.")
+
+        browser = await launch()
+        page = await browser.newPage()
+        url = self._getURL(subject)
+        if url is None:
+            await ctx.send("Couldn't find that subject!")
             return
 
-        await status.edit(content=response_message)
+        print(url)
+        await page.goto(url)
+        await page.click('#expandAll')
+        # I think there might be a way to pass in js code that'll do this without having 
+        # to wait this fixed time
+        await page.waitFor(5000)
+        data = await page.evaluate('''() => {
+            courses = document.querySelectorAll('.primarySection')
+            return Array.from(courses).map(rawSection => {
+                const id =  rawSection.getAttribute('id');
+                const fullCourse = id.match(/[A-Z]+\d+[A-Z]*\d*/)[0];
+                const course = fullCourse.substring(fullCourse.indexOf('0'));
+                return course;
+          })
+        }''')
 
+        print(data)
 
-    @commands.command(help="Look up a stroke order for a SINGLE kanji")
-    @is_admin()
-    async def benis(self, ctx, english: str, def_num: int = None,  meaning_num: int = 0, ):
-        status = await ctx.send(f"Searching for {english}.")
-        # try:
-        response_message = self._generate_message(self.j.esearch(english), meaning_num=meaning_num)
-        # except TypeError as e:
-        #     print(e)
-        #     await status.edit(content="Sorry, I could not find that.")
-        #     return
+        await browser.close()
 
-        await status.edit(content=response_message)
-        while True:
-            await status.add_reaction(LEFT_EMOJI)
-            await status.add_reaction(RIGHT_EMOJI)
-
-            r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author)
-            #
-            # await status.edit(content=self._get_meaning(hira, meaning_num+(1 if r.emoji == RIGHT_EMOJI else -1)))
-
-        await status.edit(content="Aborted.", delete_after=TMPMSG_DEFAULT)
+        # await status.edit(content="Aborted.", delete_after=TMPMSG_DEFAULT)
