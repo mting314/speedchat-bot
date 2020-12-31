@@ -3,8 +3,8 @@ from discord.ext import commands
 import random
 import json
 
-from speedchat_bot.constants import *
-from speedchat_bot.perms import *
+from constants import *
+from perms import *
 
 # Commands for Speedchat
 class Speedchat(commands.Cog):

@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 import random
 
-from speedchat_bot.constants import *
-from speedchat_bot.perms import *
+from constants import *
+from perms import *
 from jisho import jisho
 
 import json # temporarily

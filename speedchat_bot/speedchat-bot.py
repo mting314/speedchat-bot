@@ -14,9 +14,11 @@ from dotenv import load_dotenv
 
 from bottools import BotTools
 from japanese import Japanese
+
+
 from speedchat.speedchat import Speedchat
-from speedchat_bot.constants import *
-from speedchat_bot.util import Util
+from constants import *
+from util import Util
 
 load_dotenv()
 
