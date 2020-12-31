@@ -14,7 +14,7 @@ class Speedchat(commands.Cog):
     @commands.command(help="Look up a stroke order for a SINGLE kanji")
     @is_admin()
     async def speedchat(self, ctx):
-        with open('speedchat.json') as fp:
+        with open('speedchat_bot/speedchat/speedchat.json') as fp:
             data = json.load(fp)
-            random_index = random.randint(0, len(data)-1)
-            await ctx.send(data[random_index])
+            message = random.choice(list(data.values()))
+            await ctx.send(f'Speedchat:"{message}"')
