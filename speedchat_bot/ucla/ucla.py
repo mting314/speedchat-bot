@@ -15,7 +15,7 @@ from perms import *
 class UCLA(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        f = open('speedchat_bot/subjects.json') 
+        f = open('speedchat_bot/ucla/subjects.json') 
         self.subjectsJSON = json.load(f)
 
     def _getURL(self, subject):
@@ -44,17 +44,19 @@ class UCLA(commands.Cog):
         # I think there might be a way to pass in js code that'll do this without having 
         # to wait this fixed time
         await page.waitFor(5000)
-        data = await page.evaluate('''() => {
-            courses = document.querySelectorAll('.primarySection')
-            return Array.from(courses).map(rawSection => {
-                const id =  rawSection.getAttribute('id');
+        courses_containers = await page.querySelectorAll('.primarySection')
+
+        courses = []
+        for container in courses_containers:
+            oof.append(await page.evaluate('''el => {
+                const id =  el.getAttribute('id');
                 const fullCourse = id.match(/[A-Z]+\d+[A-Z]*\d*/)[0];
                 const course = fullCourse.substring(fullCourse.indexOf('0'));
                 return course;
-          })
-        }''')
+            }''', container))
 
-        print(data)
+
+        print(courses)
 
         await browser.close()
 

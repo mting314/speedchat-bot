@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from bottools import BotTools
 from japanese import Japanese
 from speedchat.speedchat import Speedchat
-from ucla import UCLA
+from ucla.ucla import UCLA
 
 from constants import *
 from util import Util
