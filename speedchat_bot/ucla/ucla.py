@@ -18,7 +18,7 @@ from perms import *
 
 # regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\(".*?%s",({"Term":"21W","SubjectAreaCode":"%s","CatalogNumber":"%s","IsRoot":true,"SessionGroup":"%%","ClassNumber":"\W*%s\W*","SequenceNumber":null,"Path":"[\d_]*?%s","MultiListedClassFlag":"n",.*?}\))'
 # Assumptions: class number is always either 001,002, etc., or '%'
-regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"Term":"21W".*?"ClassNumber":" *?[\d%%]{1,3} *.*?"Path":"[\d_]*?%s[\d]{0,3}".*?"Token":".*?"}\));'
+regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"Term":"21W".*?"ClassNumber":" *?[\d%%]{1,3} *.*?"Path":"[\d_]*?%s[\d]{0,3}".*?"Token":".*?"})\);'
 def generate_url(base_url, params):
     """Generate a URL given many parameters to attach as query strings"""
     url_parts = list(urlparse.urlparse(base_url))
@@ -176,10 +176,13 @@ class UCLA(commands.Cog):
         model_choices = search_for_class_model(subject, catalog, lecture_no=lecture_no)
 
         # which model to choose? display choices to user, let them choose, then add to JSON
+        htmls = []
         for model in model_choices:
             # await ctx.channel.send(model)
             print(model)
-            self.check_class(model)
+            htmls = htmls + self.check_class(model)
+
+        print(htmls)
 
 
         
@@ -253,10 +256,12 @@ class UCLA(commands.Cog):
 
 
         final_url = generate_url(url, params)
+        print(final_url)
         r = requests.get(final_url, headers=headers)
 
         soup = BeautifulSoup(r.content, features="lxml")
-        print(soup)
+        # print(soup)
+        return soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")
         # print(self._parse_class(soup))
 
 
