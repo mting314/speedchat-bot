@@ -1,0 +1,11 @@
+#resultsTitle {
+    -webkit-tap-highlight-color: rgba(232, 230, 227, 0);
+    font: 400 81.5%/1.3em ProximaNova, Verdana, sans-serif;
+    font-weight: 400;
+    letter-spacing: .14px;
+    line-height: 1.4em;
+    font-family: ProximaNova, Verdana, sans-serif;
+    color: rgb(205, 200, 194);
+    font-size: 15.4px;
+    box-sizing: border-box;
+}
