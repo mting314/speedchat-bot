@@ -20,6 +20,14 @@ from perms import *
 # regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\(".*?%s",({"Term":"21W","SubjectAreaCode":"%s","CatalogNumber":"%s","IsRoot":true,"SessionGroup":"%%","ClassNumber":"\W*%s\W*","SequenceNumber":null,"Path":"[\d_]*?%s","MultiListedClassFlag":"n",.*?}\))'
 # Assumptions: class number is always either 001,002, etc., or '%'
 regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"Term":"%s".*?"ClassNumber":" *?[\d%%]{1,3} *.*?"Path":"[\d_]*?%s[\d]{0,3}".*?"Token":".*?"})\);'
+HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+
+def _parse_string_to_array(tag):
+    my_string = ''.join(map(str, tag.contents))
+    tagMatcher = re.compile('<wbr/>|<(/)?p>|<(/)?a[^>]*>')
+    text = tagMatcher.sub('', my_string).strip()
+    arr = text.split("<br/>")
+    return arr
 
 
 
@@ -41,34 +49,6 @@ def parse_catalog_no(catalog):
         return '{:>04s}'.format(match[1]) + match[2]
     else:
         return '{:>04s}'.format(catalog)
-
-# TODO: Check subjects with spaces, i.e. COM SCI
-def search_for_class_model(subject, catalog, term):
-    """Model?"""
-    # Separate catalog no (151AH) into {numbers: 151, letters:AH} then recombine after padding. The reason for this is really annoying:
-    # For some reason, when padding the overall course name with zeroes, you only consider the length of the number part.
-    # For example, Math 151AH would become MATH0151AH, while Math 31A would become MATH0031A
-    better_catalog = parse_catalog_no(catalog)
-
-    headers = {"X-Requested-With": "XMLHttpRequest"}
-    pageNumber = 1
-    while True:
-        url = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{term}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
-        r = requests.get(url, headers=headers)
-
-        # when we get past all the result pages, we'll get nothing from requests.get
-        if r.content == b'':
-            break
-
-        real_regex = regex % (subject + better_catalog, term, subject + better_catalog)
-        # print(real_regex)
-        found = re.finditer(real_regex, str(r.content))
-        
-        if found:
-            for i in found:
-                yield i[1]
-
-        pageNumber += 1
 
 def new_search_for_class_model(subject, catalog):
     better_subject_name = urlparse.quote(subject).replace('%20', '+')
@@ -115,16 +95,17 @@ class UCLA(commands.Cog):
         embedVar = discord.Embed(title=title, description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})', color=0x00ff00)
         embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
         embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
+        embedVar.add_field(name="Days", value=parsed_class["days"], inline=True)
         embedVar.add_field(name="Locations", value=parsed_class["locations"], inline=True)
 
         embedVar.add_field(name="Enrollment Status", value=f'{parsed_class["enrollment_status"]} ({parsed_class["enrollment_count"]}/{parsed_class["enrollment_capacity"]} enrolled)', inline=True)
         if "waitlist_status" in parsed_class:
-            embedVar.add_field(name="Waitlist Status", value=f'{parsed_class["waitlist_status"]} ({parsed_class["waitlist_count"]}/{parsed_class["waitlist_capacity"]} enrolled)', inline=True)
+            embedVar.add_field(name="Waitlist Status", value=f'{parsed_class["waitlist_status"]} ({parsed_class["waitlist_count"]}/{parsed_class["waitlist_capacity"]} taken)', inline=True)
         else:
             embedVar.add_field(name="Waitlist Status", value='No waitlist... yet...', inline=True)
 
         if "description" in parsed_class:
-            embedVar.add_field(name="Description", value=parsed_class['description'], inline=False)
+            embedVar.add_field(name="Course Description", value=parsed_class['description'], inline=False)
 
         return embedVar
 
@@ -140,7 +121,6 @@ class UCLA(commands.Cog):
         await page.waitForSelector('#resultsTitle');          
         element = await page.querySelector('#resultsTitle')
 
-        # TODO: edit html with jquery or smth to add in (Choice X) to title of class
         if key:
             await page.evaluate(f'document.querySelector("a[id$=\'-title\']").prepend("(Choice {key}) ")')
 
@@ -183,7 +163,6 @@ class UCLA(commands.Cog):
         
 
         class_name_dict = {}
-        headers = {"X-Requested-With": "XMLHttpRequest"}
         for subject in self.subjectsJSON:
             pageNumber = 1
             # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
@@ -192,7 +171,7 @@ class UCLA(commands.Cog):
             while True:
                 url = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject_name}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{self.term}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
                 # print(url)
-                r = requests.get(url, headers=headers)
+                r = requests.get(url, headers=HEADERS)
                 soup = BeautifulSoup(r.content, "lxml")
                 div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
@@ -273,14 +252,17 @@ class UCLA(commands.Cog):
                 return waitlist_dict
 
 
+
     def _parse_class(self, name_soup_pair):
         soup = name_soup_pair[1]
         enrollment_data = soup.select_one("div[id$=-status_data]").text
         waitlist_data = soup.select_one("div[id$=-waitlist_data]").text.replace("\n", '')
         # TODO: Multiple locations!
-        locations = soup.select_one("div[id$=-location_data]").text
-        days = []
-        times = []
+
+
+        locations = _parse_string_to_array(soup.select_one("div[id$=-location_data]"))
+        days = _parse_string_to_array(soup.select_one("div[id$=-days_data] p a"))
+        times = _parse_string_to_array(soup.select_one("div[id$=-time_data]>p"))
 
         # I hope it always looks lile <div id="blah-units_data"><p> # of units </p></div>
         # could be wrong...
@@ -292,7 +274,7 @@ class UCLA(commands.Cog):
 
         class_dict =  {
             # "subject":  details_url_parts['subj_area_cd'].strip(),
-            "class_no": details_url_parts['class_no'].strip(),
+            "class_no": details_url_parts['class_no'].strip(),   
             "class_name": name_soup_pair[0],
             "term": self.term,
             "section_name": section_name,
@@ -323,9 +305,7 @@ class UCLA(commands.Cog):
             or self._parseWaitlistData("Waitlist Closed", self.waitlistClosedRegex, waitlist_data)\
             or None
 
-        # TODO: I'm a bit uncomfortable with this. By merging dictionaries only when it a,b exist,
-        # some of the keys like "enrollment_capacity" won't be present. Will that be a problem later
-        # down the line??
+
         if a: class_dict = {**class_dict, **a} # grr if this were python 3.9 we could just use |
         if b: class_dict = {**class_dict, **b}
 
@@ -351,7 +331,7 @@ class UCLA(commands.Cog):
         # Slow: use pyppeteer to query results by class_id, and take screenshot, send in channel
             # pros: looks pretty, easier to read
             # cons: I'm not sure how much I trust the ability to parse the class_id (see class_id assumption)
-            # also, slower by like 7 seconds, might be annoying when looking through lots of classes
+            # also, slower by like 7 seconds, might be annoying when browsing through lots of different classes
 
         # Fast: Just send 
             # pros: 
@@ -440,7 +420,7 @@ class UCLA(commands.Cog):
             for key, name_soup_pair in htmls.items():
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
                 class_id = self.parse_class_id(str(name_soup_pair[1]))
-                await self._generate_image(browser, class_id, ctx, key=key)
+                await self._generate_image(browser, class_id, ctx)
 
             await browser.close()
 
@@ -462,18 +442,16 @@ class UCLA(commands.Cog):
         
 
     def check_class(self, name_model_pair):
+        """Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc."""
         name = name_model_pair[0]
         model = name_model_pair[1]
         FilterFlags = '{"enrollment_status":"O,W,C,X,T,S","advanced":"y","meet_days":"M,T,W,R,F","start_time":"8:00 am","end_time":"7:00 pm","meet_locations":null,"meet_units":null,"instructor":null,"class_career":null,"impacted":null,"enrollment_restrictions":null,"enforced_requisites":null,"individual_studies":null,"summer_session":null}'
                 
         params = {'search_by':'subject','model':model, 'FilterFlags':FilterFlags, '_':'1571869764769'}
-        
-        headers = {"X-Requested-With": "XMLHttpRequest"}
-
 
         final_url = generate_url(self.GET_COURSE_SUMMARY_URL, params)
         # print(final_url)
-        r = requests.get(final_url, headers=headers)
+        r = requests.get(final_url, headers=HEADERS)
 
         soup = BeautifulSoup(r.content, features="lxml")
         # print(soup)
