@@ -70,6 +70,15 @@ def search_for_class_model(subject, catalog, term):
 
         pageNumber += 1
 
+def new_search_for_class_model(subject, catalog):
+    better_subject_name = urlparse.quote(subject).replace('%20', '+')
+    with open("class_names.json") as fp:
+        # TODO: Maybe separate subjects into their own json?
+        data = json.load(fp)['class_names']
+        classes_in_subject = data[better_subject_name]
+        for my_class in classes_in_subject:
+            if my_class[0].split()[0] == str(catalog):
+                yield (f"{better_subject_name} {my_class[0]}", my_class[1])
 
 
 # Commands for looking up UCLA classes
@@ -78,6 +87,7 @@ class UCLA(commands.Cog):
         self.bot = bot
         f = open('speedchat_bot/ucla/subjects.json') 
         self.subjectsJSON = json.load(f)
+        f.close()
         # self.class_regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("%s",({"Term":"20W","SubjectAreaCode":"%s","CatalogNumber":"%s","IsRoot":true,"SessionGroup":"%%","ClassNumber":"\W*%s\W*","SequenceNumber":null,"Path":"%s","MultiListedClassFlag":"n",.*?})'
         
         self.tenativeRegex     = re.compile('^Tenative')
@@ -94,8 +104,44 @@ class UCLA(commands.Cog):
 
         self.term = "21W"
         self.reload_json()
+        self.PUBLIC_RESULTS_URL = "https://sa.ucla.edu/ro/Public/SOC/Results"
+        self.GET_COURSE_SUMMARY_URL = "https://sa.ucla.edu/ro/Public/SOC/Results/GetCourseSummary"
 
 
+    def _generate_embed(self, parsed_class, key=None):
+        """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
+        title = '{choice} {class_name}'.format(choice=f"(Choice {key})" if key else '', class_name=parsed_class["class_name"])
+        
+        embedVar = discord.Embed(title=title, description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})', color=0x00ff00)
+        embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
+        embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
+        embedVar.add_field(name="Locations", value=parsed_class["locations"], inline=True)
+
+        embedVar.add_field(name="Status", value=f'{parsed_class["enrollment_status"]} ({parsed_class["enrollment_count"]}/{parsed_class["enrollment_capacity"]} enrolled)', inline=True)
+
+        return embedVar
+
+    async def _generate_image(self, browser, class_id, ctx, key=None):
+        """Take a picture of a class id's details page, for sending in a slow mode"""
+        params = {'t': self.term, 'sBy': 'classidnumber','id': class_id}
+        final_url = generate_url(self.PUBLIC_RESULTS_URL, params)
+
+        page = await browser.newPage()
+
+        await page.goto(final_url)
+
+        await page.waitForSelector('#resultsTitle');          
+        element = await page.querySelector('#resultsTitle')
+
+        # TODO: edit html with jquery or smth to add in (Choice X) to title of class
+        await element.screenshot(path='candidate.png')
+        if key:
+            await ctx.channel.send(f"Choice {key}", file=discord.File('candidate.png'))
+        else:
+            await ctx.channel.send(file=discord.File('candidate.png'))
+
+        if os.path.exists("candidate.png"):
+            os.remove("candidate.png")
 
 
     @commands.command(help="Switch to a new term for searching (i.e. to 20F)")
@@ -111,10 +157,9 @@ class UCLA(commands.Cog):
             ctx.channel.send(f"You're already on {self.term}!")
             return
 
-
         # If we pass the checks, actually switch term, and initialize class list
         self.term = new_term
-
+        self.reload_json()
         
 
     def reload_json(self):
@@ -129,9 +174,9 @@ class UCLA(commands.Cog):
         headers = {"X-Requested-With": "XMLHttpRequest"}
         for subject in self.subjectsJSON:
             pageNumber = 1
-            # Replace everything but 
+            # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
             subject_name = urlparse.quote(subject["value"]).replace('%20', '+')
-            all_classes = {}
+            all_classes = []
             while True:
                 url = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject_name}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{self.term}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
                 # print(url)
@@ -140,11 +185,9 @@ class UCLA(commands.Cog):
                 div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
                 for div, script in div_script_pairs:
-                    # TODO: What if duplicate tokens?!?!
-                    all_classes[re.search('"Token":"(.*?)"}',script.decode_contents())[1]] = div.select_one('a[id$="-title"]').text
-
-                # all_classes = all_classes + list(map(lambda pair: {re.search('"Token":"(.*?)"}',pair[1].decode_contents())[1]: pair[0].select_one('a[id$="-title"]').text}, div_script_pairs))
-
+                    # I can't guarantee that there isn't some wack scenario where there are two classes
+                    # names exactly the same, make each name+model pair like a tuple instead
+                    all_classes.append([div.select_one('a[id$="-title"]').text, re.search("({.*?})", script.decode_contents())[1]])
                 # when we get past all the result pages, we'll get nothing from requests.get
                 if r.content == b'':
                     break
@@ -161,6 +204,19 @@ class UCLA(commands.Cog):
         print("done")
 
 
+    def _ParseEnrollmentStatusLogic(self, potential_status, enrollment_dict):
+        """
+        Sometimes the status string doesn't say either the Capacity and or the Count,
+        i.e. "ClosedClass Full (45), Over Enrolled By 3" doesn't give any info on the count
+        but since the class is full, we know that the enrollment count and capacity have to match
+        and are both 45. This implements that logic.
+        """
+
+        if potential_status == self.classFullRegex or potential_status == self.waitlistFullRegex:
+            enrollment_dict["enrollment_count"] = enrollment_dict["enrollment_capacity"]
+
+            
+
 
     def _ParseEnrollmentStatus(self, potential_status, statusRegex, my_string):
         matches = statusRegex.match(my_string)
@@ -172,8 +228,8 @@ class UCLA(commands.Cog):
                 "enrollment_status": potential_status, 
                 # TODO: Is it okay to return 0 
                 "enrollment_capacity": int(match_dict["Capacity"] or 0) if "Capacity" in match_dict else None, 
-                "enrollment_count": int(match_dict["EnrolledCount"] or 0) if "EnrolledCount" in match_dict else None,
-                "enrollment_over": int(match_dict["OverenrolledCount"] or 0) if "OverenrolledCount" in match_dict else None,
+                "enrollment_count"   : int(match_dict["EnrolledCount"] or 0) if "EnrolledCount" in match_dict else None,
+                "enrollment_over"    : int(match_dict["OverenrolledCount"] or 0) if "OverenrolledCount" in match_dict else None,
             }
 
     def _parseWaitlistData(self, statusRegex, my_string):
@@ -188,7 +244,8 @@ class UCLA(commands.Cog):
             }
 
 
-    def _parse_class(self, soup, full_class_name=False):
+    def _parse_class(self, name_soup_pair):
+        soup = name_soup_pair[1]
         status = soup.select_one("div[id$=-status_data]").text
         # TODO: Multiple locations!
         locations = soup.select_one("div[id$=-location_data]").text
@@ -203,24 +260,10 @@ class UCLA(commands.Cog):
         section_name = soup.select_one('a[title^="Class Detail for "]').text
         details_url_parts = dict(urlparse.parse_qsl(list(urlparse.urlparse(details_url))[4]))
 
-        # I don't like this, but a quick detour into the public results endpoint allows us to get
-        # the full class name (i.e. "Math 31B - Integration and Infinite Series")
-        # Perhaps could use this entirely for parsing?
-        # params = {'t': TERM, 'sBy': 'classidnumber','id': details_url_parts['class_id'].strip()}
-        # final_url = generate_url("https://sa.ucla.edu/ro/Public/SOC/Results", params)
-        # headers = {"X-Requested-With": "XMLHttpRequest"}
-        # r = requests.get(final_url, headers=headers)
-        # title_soup = BeautifulSoup(r.content, "lxml")
-        # class_title = title_soup.select_one('a[id$="-title"]').text
-
-
-
-
         class_dict =  {
-            # "class_id": details_url_parts['class_id'].strip(),
             # "subject":  details_url_parts['subj_area_cd'].strip(),
             "class_no": details_url_parts['class_no'].strip(),
-            # "title": class_title,
+            "class_name": name_soup_pair[0],
             "term": self.term,
             "section_name": section_name,
             "days": days,
@@ -229,15 +272,17 @@ class UCLA(commands.Cog):
             "units": units,
             "url": details_url,
             "status": status, 
+
+            "full_model": re.search("\((.*?)\)", soup.select_one("script").decode_contents())[1]
         }
 
-        if full_class_name:
-            script = soup.select_one("script").decode_contents()
-            token = re.search('"Token":"(.*?)"}',script)[1]
-            subject = re.search('"SubjectAreaCode":"(.*?)"',script)[1].strip()
-            with open('class_names.json') as fp:
-                data = json.load(fp)["class_names"]
-                class_dict["class_name"] = data[subject][token]
+        # if full_class_name:
+        #     script = soup.select_one("script").decode_contents()
+        #     token = re.search('"Token":"(.*?)"}',script)[1]
+        #     subject = re.search('"SubjectAreaCode":"(.*?)"',script)[1].strip()
+        #     with open('class_names.json') as fp:
+        #         data = json.load(fp)["class_names"]
+        #         class_dict["class_name"] = data[subject][token]
 
         # BEGIN PARSING STATUS (the hard part)
 
@@ -268,15 +313,14 @@ class UCLA(commands.Cog):
     @commands.command(help="Oof")
     @is_admin()
     async def searchclass(self, ctx, subject: str, catalog: str, mode="slow"):
-        model_choices = search_for_class_model(subject, catalog, self.term)
-        url = "https://sa.ucla.edu/ro/Public/SOC/Results"
+        model_choices = list(new_search_for_class_model(subject, catalog))
 
         # which model to choose? display choices to user, let them choose, then add to JSON
         htmls = []
-        for model in model_choices:
+        for name_model_pair in model_choices:
             # await ctx.channel.send(model)
-            print(model)
-            htmls = htmls + self.check_class(model)
+            print(name_model_pair[1])
+            htmls = htmls + self.check_class(name_model_pair)
 
         htmls = {chr(i+65): htmls[i] for i in range(len(htmls))}
 
@@ -295,41 +339,18 @@ class UCLA(commands.Cog):
         if mode == "slow":
             browser = await launch()
 
-            for key, class_html in htmls.items():
+            for key, name_soup_pair in htmls.items():
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
-                class_id = self.parse_class_id(str(class_html))
-                params = {'t': self.term, 'sBy': 'classidnumber','id': class_id}
-                final_url = generate_url(url, params)
-
-                page = await browser.newPage()
-
-                await page.goto(final_url)
-
-                await page.waitForSelector('#resultsTitle');          
-                element = await page.querySelector('#resultsTitle')
-
-
-                await element.screenshot(path='candidate.png')
-                await ctx.channel.send(f"Choice {key}:")
-                await ctx.channel.send(file=discord.File('candidate.png'))
-
-                if os.path.exists("candidate.png"):
-                    os.remove("candidate.png")
+                class_id = self.parse_class_id(str(name_soup_pair[1]))
+                await self._generate_image(browser, class_id, ctx, key=key)
 
             await browser.close()
 
         else: # we're in fast mode
-            for key, class_html in htmls.items():
+            for key, name_soup_pair in htmls.items():
                 # await ctx.channel.send(f"Choice {key}: " + json.dumps(self._parse_class(class_html), indent=4))
-                parsed_class = self._parse_class(class_html, full_class_name=True)
-                embedVar = discord.Embed(title=f'(Choice {key}) {parsed_class["class_name"]}', description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})', color=0x00ff00)
-                embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
-                embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
-                embedVar.add_field(name="Locations", value=parsed_class["locations"], inline=True)
-
-                embedVar.add_field(name="Status", value=f'{parsed_class["enrollment_status"]} ({parsed_class["enrollment_count"]}/{parsed_class["enrollment_capacity"]})', inline=True)
-
-                await ctx.channel.send(embed=embedVar)
+                parsed_class = self._parse_class(name_soup_pair)
+                await ctx.channel.send(embed=self._generate_embed(parsed_class), key=KeyboardInterrupt)
 
 
         while True:
@@ -357,16 +378,19 @@ class UCLA(commands.Cog):
         if my_choice:
             # read
             try:
-                a_file = open("sample_file.json", "r")
+                a_file = open("classes_to_watch.json", "r")
                 json_object = json.load(a_file)
                 a_file.close()
-            except FileNotFoundError:
-                json_object = {}
+            except (FileNotFoundError, json.JSONDecodeError):
+                json_object = {"classes": []}
 
-            #write
-            json_object["d"] = 100
-
-            a_file = open("sample_file.json", "w")
+            #write lookup_info, which is the weird javascript thingy I've been getting the token from 
+            lookup_info = re.search("\((.*?)\)", htmls[my_choice].select_one("script").decode_contents())[1]
+            
+            json_object["classes"].append(lookup_info)
+            # TODO: warn about duplicates
+            json_object["clases"] = list(set(json_object["classes"]))
+            a_file = open("classes_to_watch.json", "w")
             json.dump(json_object, a_file)
             a_file.close()
 
@@ -377,36 +401,60 @@ class UCLA(commands.Cog):
         return match[1] if match else None
         
 
-    def check_class(self, model):
+    def check_class(self, name_model_pair):
+        name = name_model_pair[0]
+        model = name_model_pair[1]
         FilterFlags = '{"enrollment_status":"O,W,C,X,T,S","advanced":"y","meet_days":"M,T,W,R,F","start_time":"8:00 am","end_time":"7:00 pm","meet_locations":null,"meet_units":null,"instructor":null,"class_career":null,"impacted":null,"enrollment_restrictions":null,"enforced_requisites":null,"individual_studies":null,"summer_session":null}'
                 
         params = {'search_by':'subject','model':model, 'FilterFlags':FilterFlags, '_':'1571869764769'}
-
-        url = "https://sa.ucla.edu/ro/Public/SOC/Results/GetCourseSummary"
         
         headers = {"X-Requested-With": "XMLHttpRequest"}
 
 
-        final_url = generate_url(url, params)
+        final_url = generate_url(self.GET_COURSE_SUMMARY_URL, params)
         print(final_url)
         r = requests.get(final_url, headers=headers)
 
         soup = BeautifulSoup(r.content, features="lxml")
         # print(soup)
-        return soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")
+        return [(name, html) for html in soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")]
         # print(self._parse_class(soup))
 
 
 
+    @commands.command(help="see classes you're keeping track of")
+    async def see_classes(self, ctx, mode="fast"):
+        try:
+            a_file = open("classes_to_watch.json", "r")
+            json_object = json.load(a_file)
+            a_file.close()
+        except (FileNotFoundError, json.JSONDecodeError):
+            await ctx.channel.send("Looks like you don't have any classes kept track of, or the file got malformed.\nIf the file is malformed, try clearing it.")
+
+        if mode == "fast":
+            for my_class in json_object["classes"]:
+                parsed_class = self._parse_class(BeautifulSoup(my_class, "lxml"))
+                await ctx.channel.send(embed=self._generate_embed(parsed_class))
+
+        else: # we're in the slow mode
+            browser = await launch()
+
+            for my_class in json_object["classes"]:
+                # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
+                class_id = self.parse_class_id(str(my_class))
+                self._generate_image(browser, class_id, ctx)
+            await browser.close()
 
 
 
 
 
 
-    @tasks.loop(seconds=5.0, count=5)
+    @tasks.loop(minutes=1.0)
     async def slow_count(self, ctx):
-        await self.searchclass(ctx, "MATH", "110A")
+        
+        
+
         print(self.slow_count.current_loop)
 
     @slow_count.after_loop
