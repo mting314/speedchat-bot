@@ -9,6 +9,7 @@ import re
 import os
 from bs4 import BeautifulSoup
 
+import logging
 
 import asyncio
 from pyppeteer import launch
@@ -123,7 +124,6 @@ class UCLA(commands.Cog):
 
         if key:
             await page.evaluate(f'document.querySelector("a[id$=\'-title\']").prepend("(Choice {key}) ")')
-
 
         await element.screenshot(path='candidate.png')
         if key:
@@ -253,8 +253,13 @@ class UCLA(commands.Cog):
 
 
 
-    def _parse_class(self, name_soup_pair):
-        soup = name_soup_pair[1]
+    def _parse_class(self, name_soup_pair, term=None):
+        if type(name_soup_pair) is tuple:
+            name = name_soup_pair[0]
+            soup = name_soup_pair[1]
+        else: # we sent to this function soup from the public records page, which has name info on it
+            name = name_soup_pair.select_one("a[id$=-title]").text
+            soup = name_soup_pair
         enrollment_data = soup.select_one("div[id$=-status_data]").text
         waitlist_data = soup.select_one("div[id$=-waitlist_data]").text.replace("\n", '')
         # TODO: Multiple locations!
@@ -274,9 +279,10 @@ class UCLA(commands.Cog):
 
         class_dict =  {
             # "subject":  details_url_parts['subj_area_cd'].strip(),
-            "class_no": details_url_parts['class_no'].strip(),   
-            "class_name": name_soup_pair[0],
-            "term": self.term,
+            "class_no": details_url_parts['class_no'].strip(),
+            "class_id": self.parse_class_id(str(soup)), 
+            "class_name": name,
+            "term": term or self.term,
             "section_name": section_name,
             "days": days,
             "times": times,
@@ -285,7 +291,7 @@ class UCLA(commands.Cog):
             "url": details_url,
             "enrollment_data": enrollment_data, 
 
-            "full_model": re.search("\((.*?)\)", soup.select_one("script").decode_contents())[1]
+            # "full_model": re.search("\((.*?)\)", soup.select_one("script").decode_contents())[1]
         }
 
         # BEGIN PARSING STATUS (the hard part)
@@ -384,16 +390,23 @@ class UCLA(commands.Cog):
                 json_object = json.load(a_file)
                 a_file.close()
             except (FileNotFoundError, json.JSONDecodeError):
-                json_object = {"class_ids": []}
+                json_object = {"classes": []}
 
-            #write lookup_info, which is the weird javascript thingy I've been getting the token from 
-            # lookup_info = re.search("\((.*?)\)", htmls[my_choice].select_one("script").decode_contents())[1]
-            
-            # write class_id, 
+            class_id = self.parse_class_id(str(name_soup_pair[1]))
 
-            json_object["class_ids"].append(self.parse_class_id(str(name_soup_pair[1])))
-            # TODO: warn about duplicates
-            json_object["class_ids"] = list(set(json_object["class_ids"]))
+            # check for duplicates
+            for my_class in json_object["classes"]:
+                if class_id == my_class["class_id"]:
+                    await ctx.channel.send("You're already keeping track of that class!")
+                    return
+
+            # write class_id, *current* enrollment_status, and a name to the json
+            json_object["classes"].append({
+                "class_id": self.parse_class_id(str(name_soup_pair[1])),
+                "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
+                "class_name": name_soup_pair[0],
+                })
+
             a_file = open("classes_to_watch.json", "w")
             json.dump(json_object, a_file)
             a_file.close()
@@ -471,38 +484,67 @@ class UCLA(commands.Cog):
 
         if mode == "fast":
             for my_class in json_object["classes"]:
-                parsed_class = self._parse_class(BeautifulSoup(my_class, "lxml"))
-                await ctx.channel.send(embed=self._generate_embed(parsed_class))
+                # get class from public url
+                params = {'t': self.term, 'sBy': 'classidnumber','id': my_class['class_id']}
+                final_url = generate_url(self.PUBLIC_RESULTS_URL, params)
+                soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
+
+                await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup)))
 
         else: # we're in the slow mode
             browser = await launch()
-
             for my_class in json_object["classes"]:
-                # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
-                class_id = self.parse_class_id(str(my_class))
-                self._generate_image(browser, class_id, ctx)
+
+                self._generate_image(browser, my_class['class_id'], ctx)
             await browser.close()
 
 
 
+    @tasks.loop(seconds=15.0)
+    async def check_for_change(self, ctx):
+        try:
+            a_file = open("classes_to_watch.json", "r")
+            json_object = json.load(a_file)
+            a_file.close()
+        except (FileNotFoundError, json.JSONDecodeError):
+            # The file is not there/unreadable, no point going on to check
+            return
+
+        need_change = False
+
+        for my_class in json_object["classes"]:
+            params = {'t': self.term, 'sBy': 'classidnumber','id': my_class['class_id']}
+            final_url = generate_url(self.PUBLIC_RESULTS_URL, params)
+            soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
+            enrollment_data = soup.select_one("div[id$=-status_data]").text
+
+            await ctx.channel.send(f'{my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
+            
+            #  Current status  changed from   previously recorded status
+            if enrollment_data      !=         my_class["enrollment_data"]:
+                await ctx.channel.send(f'Change! {my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
+
+                my_class['enrollment_data'] = enrollment_data
+
+        if need_change:
+            a_file = open("classes_to_watch.json", "w")
+            json.dump(json_object, a_file)
+            a_file.close()
 
 
+        print(self.check_for_change.current_loop)
 
-    @tasks.loop(minutes=1.0)
-    async def slow_count(self, ctx):
-        
-        
-
-        print(self.slow_count.current_loop)
-
-    @slow_count.after_loop
+    @check_for_change.after_loop
     async def after_slow_count(self):
         print('done!')
 
 
     @commands.command(help="Count")
     async def start_the_count(self, ctx):
-        self.slow_count.start(ctx)
+        self.check_for_change.start(ctx)
+
+
+        
 
 
 

@@ -20,6 +20,10 @@ from ucla.ucla import UCLA
 from constants import *
 from util import Util
 
+# import logging
+
+# logging.basicConfig(filename='log/example.log', level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
 load_dotenv()
 
 random.seed()
@@ -30,7 +34,8 @@ cli = commands.Bot(command_prefix=CMD_PREFIX)
 
 @cli.event
 async def on_ready():
-    print(cli)
+    logging.info(cli)
+    logging.info(f"Successfully logged in as {cli.user}.")
     print(f"Successfully logged in as {cli.user}.")
     await cli.change_presence(status=discord.Status.online,
                               activity=discord.Game(
@@ -51,9 +56,10 @@ if __name__ == "__main__":
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("", port))
     sock.listen(1)
-    print(f"Bound to port {port}")
+    # log.info(f"Bound to port {port}")
 
     try:
         cli.run(os.environ.get("TOKEN"))
     except AttributeError as e:
+        # log.error("An environment variable is not set.")
         print("An environment variable is not set.")
