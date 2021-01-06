@@ -24,6 +24,10 @@ regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
 def _parse_string_to_array(tag):
+    """Takes a string of HTML that displays locations, times, etc. from UCLA course details page, and separates into an array based on the <br/> tags."""
+    if tag is None:
+        return []
+    
     my_string = ''.join(map(str, tag.contents))
     tagMatcher = re.compile('<wbr/>|<(/)?p>|<(/)?a[^>]*>')
     text = tagMatcher.sub('', my_string).strip()
@@ -33,7 +37,7 @@ def _parse_string_to_array(tag):
 
 
 def generate_url(base_url, params):
-    """Generate a URL given many parameters to attach as query strings"""
+    """Generate a URL given many parameters to attach as query strings. Also replaces single quote with double quote because that's what UCLA likes."""
     url_parts = list(urlparse.urlparse(base_url))
     query = dict(urlparse.parse_qsl(url_parts[4]))
     query.update(params)
@@ -71,13 +75,27 @@ class UCLA(commands.Cog):
         f.close()
         # self.class_regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("%s",({"Term":"20W","SubjectAreaCode":"%s","CatalogNumber":"%s","IsRoot":true,"SessionGroup":"%%","ClassNumber":"\W*%s\W*","SequenceNumber":null,"Path":"%s","MultiListedClassFlag":"n",.*?})'
         
-        self.tenativeRegex     = re.compile('^Tenative')
-        self.cancelledRegex    = re.compile('^Cancelled')
-        self.closedByDeptRegex = re.compile('^Closed by Dept[a-zA-Z,/ ]*(\((?P<Capacity>\d+) capacity, (?P<EnrolledCount>\d+) enrolled, (?P<WaitlistedCount>\d+) waitlisted\))?')
-        self.classFullRegex    = re.compile('ClosedClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
-        self.classOpenRegex    = re.compile('Open(?P<EnrolledCount>\d+) of (?P<Capacity>\d+) Enrolled(\d+) Spots? Left')
-        self.waitlistOnlyRegex = re.compile('^Waitlist$')
-        self.waitlistFullRegex = re.compile('^WaitlistClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
+        # self.tenativeRegex     = re.compile('^Tenative')
+        # self.cancelledRegex    = re.compile('^Cancelled')
+        # self.closedByDeptRegex = re.compile('^Closed by Dept[a-zA-Z,/ ]*(\((?P<Capacity>\d+) capacity, (?P<EnrolledCount>\d+) enrolled, (?P<WaitlistedCount>\d+) waitlisted\))?')
+        # self.classFullRegex    = re.compile('ClosedClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
+        # self.classOpenRegex    = re.compile('Open(?P<EnrolledCount>\d+) of (?P<Capacity>\d+) Enrolled(\d+) Spots? Left')
+        # self.waitlistOnlyRegex = re.compile('^Waitlist$')
+        # self.waitlistFullRegex = re.compile('^WaitlistClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
+        # # Waitlist regexes
+        # self.waitlistOpenRegex   = re.compile('(?P<WaitlistCount>\d+) of (?P<WaitlistCapacity>\d+) Taken')
+        # self.noWaitlistRegex     = re.compile('No Waitlist')
+        # self.waitlistClosedRegex = re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)')
+
+        self.status_regexes = {
+            "tenative"    : re.compile('^Tenative'),
+            "cancelled"   : re.compile('^Cancelled'),
+            "closedByDept": re.compile('^Closed by Dept[a-zA-Z,/ ]*(\((?P<Capacity>\d+) capacity, (?P<EnrolledCount>\d+) enrolled, (?P<WaitlistedCount>\d+) waitlisted\))?'),
+            "classFull"   : re.compile('ClosedClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?'),
+            "classOpen"   : re.compile('Open(?P<EnrolledCount>\d+) of (?P<Capacity>\d+) Enrolled(\d+) Spots? Left'),
+            "waitlistOnly": re.compile('^Waitlist$'),
+            "waitlistFull": re.compile('^WaitlistClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?'),
+        }
         # Waitlist regexes
         self.waitlistOpenRegex   = re.compile('(?P<WaitlistCount>\d+) of (?P<WaitlistCapacity>\d+) Taken')
         self.noWaitlistRegex     = re.compile('No Waitlist')
@@ -87,11 +105,13 @@ class UCLA(commands.Cog):
         self.reload_json()
         self.PUBLIC_RESULTS_URL = "https://sa.ucla.edu/ro/Public/SOC/Results"
         self.GET_COURSE_SUMMARY_URL = "https://sa.ucla.edu/ro/Public/SOC/Results/GetCourseSummary"
+        # self.COURSE_TITLES_VIEW_URL = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject_name}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{%s}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
 
 
-    def _generate_embed(self, parsed_class, key=None):
+
+    def _generate_embed(self, parsed_class, letter_choice=None):
         """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
-        title = '{choice} {class_name}'.format(choice=f"(Choice {key})" if key else '', class_name=parsed_class["class_name"])
+        title = '{choice} {class_name}'.format(choice=f"(Choice {letter_choice})" if letter_choice else '', class_name=parsed_class["class_name"])
         
         embedVar = discord.Embed(title=title, description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})', color=0x00ff00)
         embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
@@ -110,8 +130,12 @@ class UCLA(commands.Cog):
 
         return embedVar
 
-    async def _generate_image(self, browser, class_id, ctx, key=None):
+    async def _generate_image(self, browser, class_id, ctx, letter_choice=None):
         """Take a picture of a class id's details page, for sending in a slow mode"""
+
+        if os.path.exists("candidate.png"):
+            os.remove("candidate.png")
+
         params = {'t': self.term, 'sBy': 'classidnumber','id': class_id}
         final_url = generate_url(self.PUBLIC_RESULTS_URL, params)
 
@@ -122,12 +146,12 @@ class UCLA(commands.Cog):
         await page.waitForSelector('#resultsTitle');          
         element = await page.querySelector('#resultsTitle')
 
-        if key:
-            await page.evaluate(f'document.querySelector("a[id$=\'-title\']").prepend("(Choice {key}) ")')
+        if letter_choice:
+            await page.evaluate(f'document.querySelector("a[id$=\'-title\']").prepend("(Choice {letter_choice}) ")')
 
         await element.screenshot(path='candidate.png')
-        if key:
-            await ctx.channel.send(f"Choice {key}", file=discord.File('candidate.png'))
+        if letter_choice:
+            await ctx.channel.send(f"Choice {letter_choice}", file=discord.File('candidate.png'))
         else:
             await ctx.channel.send(file=discord.File('candidate.png'))
 
@@ -170,6 +194,7 @@ class UCLA(commands.Cog):
             all_classes = []
             while True:
                 url = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject_name}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{self.term}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
+                
                 # print(url)
                 r = requests.get(url, headers=HEADERS)
                 soup = BeautifulSoup(r.content, "lxml")
@@ -195,40 +220,29 @@ class UCLA(commands.Cog):
         print("done")
 
 
-    def _ParseEnrollmentStatusLogic(self, statusRegex, enrollment_dict):
-        """
-        Sometimes the status string doesn't say either the Capacity and or the Count,
-        i.e. "ClosedClass Full (45), Over Enrolled By 3" doesn't give any info on the count
-        but since the class is full, we know that the enrollment count and capacity have to match
-        and are both 45. This implements that logic.
-        """
+    def _ParseEnrollmentStatus(self, my_string):
+        """Go through the dictionary of enrollment regexes, return an enrollment dictionary when the right match is found."""
 
-        if statusRegex == self.classFullRegex or statusRegex == self.waitlistFullRegex:
-            enrollment_dict["enrollment_count"] = enrollment_dict["enrollment_capacity"]
-            return
-
-        if statusRegex == self.waitlistClosedRegex:
-            enrollment_dict["waitlist_count"] = enrollment_dict["enrollment_capacity"]
-            return
-
-            
-
-
-    def _ParseEnrollmentStatus(self, potential_status, statusRegex, my_string):
-        matches = statusRegex.match(my_string)
-        if matches is None:
-            return None
-        else:
-            match_dict = matches.groupdict()
-            enrollment_dict = {
-                "enrollment_status": potential_status, 
-                # TODO: Is it okay to return 0 
-                "enrollment_capacity": int(match_dict["Capacity"] or 0) if "Capacity" in match_dict else None, 
-                "enrollment_count"   : int(match_dict["EnrolledCount"] or 0) if "EnrolledCount" in match_dict else None,
-                "enrollment_over"    : int(match_dict["OverenrolledCount"] or 0) if "OverenrolledCount" in match_dict else None,
-            }
-            self._ParseEnrollmentStatusLogic(statusRegex, enrollment_dict)
-            return enrollment_dict
+        for potential_status, regex in self.status_regexes.items():
+            matches = regex.match(my_string)
+            if matches is None:
+                continue
+            else:
+                match_dict = matches.groupdict()
+                enrollment_dict = {
+                    "enrollment_status": potential_status, 
+                    # TODO: Is it okay to return 0 
+                    "enrollment_capacity": int(match_dict["Capacity"] or 0) if "Capacity" in match_dict else None, 
+                    "enrollment_count"   : int(match_dict["EnrolledCount"] or 0) if "EnrolledCount" in match_dict else None,
+                    "enrollment_over"    : int(match_dict["OverenrolledCount"] or 0) if "OverenrolledCount" in match_dict else None,
+                }
+                # Sometimes the status string doesn't say either the Capacity and or the Count,
+                # i.e. "ClosedClass Full (45), Over Enrolled By 3" doesn't give any info on the count
+                # but since the class is full, we know that the enrollment count and capacity have to match
+                # and are both 45. This implements that logic.
+                if enrollment_dict['enrollment_status'] == self.status_regexes["classFull"] or enrollment_dict['enrollment_status'] == self.status_regexes["waitlistFull"]:
+                    enrollment_dict["enrollment_count"] = enrollment_dict["enrollment_capacity"]
+                return enrollment_dict
 
     def _parseWaitlistData(self, potential_status, statusRegex, my_string):
         matches = statusRegex.match(my_string)
@@ -248,7 +262,8 @@ class UCLA(commands.Cog):
                     "waitlist_capacity": int(match_dict["WaitlistCapacity"] or 0) if "WaitlistCapacity" in match_dict else None, 
                     "waitlist_count": int(match_dict["WaitlistCount"] or 0) if "WaitlistCount" in match_dict else None,
                 }
-                self._ParseEnrollmentStatusLogic(statusRegex, waitlist_dict)
+                if waitlist_dict['waitlist_status'] == self.waitlistClosedRegex:
+                    waitlist_dict["waitlist_count"] = waitlist_dict["enrollment_capacity"]
                 return waitlist_dict
 
 
@@ -262,12 +277,11 @@ class UCLA(commands.Cog):
             soup = name_soup_pair
         enrollment_data = soup.select_one("div[id$=-status_data]").text
         waitlist_data = soup.select_one("div[id$=-waitlist_data]").text.replace("\n", '')
-        # TODO: Multiple locations!
 
 
         locations = _parse_string_to_array(soup.select_one("div[id$=-location_data]"))
         days = _parse_string_to_array(soup.select_one("div[id$=-days_data] p a"))
-        times = _parse_string_to_array(soup.select_one("div[id$=-time_data]>p"))
+        times = _parse_string_to_array(soup.select_one("div[id$=-time_data]>p") or None)
 
         # I hope it always looks lile <div id="blah-units_data"><p> # of units </p></div>
         # could be wrong...
@@ -278,7 +292,7 @@ class UCLA(commands.Cog):
         details_url_parts = dict(urlparse.parse_qsl(list(urlparse.urlparse(details_url))[4]))
 
         class_dict =  {
-            # "subject":  details_url_parts['subj_area_cd'].strip(),
+            "subject":  details_url_parts['subj_area_cd'].strip(),
             "class_no": details_url_parts['class_no'].strip(),
             "class_id": self.parse_class_id(str(soup)), 
             "class_name": name,
@@ -290,21 +304,12 @@ class UCLA(commands.Cog):
             "units": units,
             "url": details_url,
             "enrollment_data": enrollment_data, 
-
-            # "full_model": re.search("\((.*?)\)", soup.select_one("script").decode_contents())[1]
         }
 
         # BEGIN PARSING STATUS (the hard part)
 
         # make a guess at what the enrollment_status is, and return the first one that works
-        a =    self._ParseEnrollmentStatus("Tentative", self.tenativeRegex, enrollment_data)                   \
-            or self._ParseEnrollmentStatus("Cancelled", self.cancelledRegex, enrollment_data)               \
-            or self._ParseEnrollmentStatus("Closed By Department", self.closedByDeptRegex, enrollment_data) \
-            or self._ParseEnrollmentStatus("Full", self.classFullRegex, enrollment_data)                    \
-            or self._ParseEnrollmentStatus("Open", self.classOpenRegex, enrollment_data)                    \
-            or self._ParseEnrollmentStatus("Waitlisted but Class Full", self.waitlistFullRegex, enrollment_data)        \
-            or self._ParseEnrollmentStatus("Waitlist Only", self.waitlistOnlyRegex, enrollment_data)        \
-            or None
+        a =    self._ParseEnrollmentStatus(enrollment_data) or None
         # make a guess at what the waitlisting status is like (open with some x out of y spots, no waitlist, or )
         b =    self._parseWaitlistData("Waitlist Open", self.waitlistOpenRegex, waitlist_data) \
             or self._parseWaitlistData("No Waitlist", self.noWaitlistRegex, waitlist_data)\
@@ -318,19 +323,19 @@ class UCLA(commands.Cog):
         # don't need to clean ints, only strings
         return {k:v.replace("\r", '').replace("\n", '').strip() if type(v) == "str" else v for k, v in class_dict.items()}
 
-    @commands.command(help="Search for a class in preparation to add to watch list")
-    @is_admin()
-    async def searchclass(self, ctx, subject: str, catalog: str, mode="slow"):
+    
+    async def _generate_class_view(self, ctx, subject: str, catalog: str, mode="slow", display_description=False):
+        """Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
+        on the resulting soups (from GetCourseSummary). Returns that lsit of name_soup_pairs.
+        """
         model_choices = list(new_search_for_class_model(subject, catalog))
 
-        # which model to choose? display choices to user, let them choose, then add to JSON
         htmls = []
         for name_model_pair in model_choices:
-            # await ctx.channel.send(model)
             print(name_model_pair[1])
             htmls = htmls + self.check_class(name_model_pair)
 
-        htmls = {chr(i+65): htmls[i] for i in range(len(htmls))}
+        # htmls = [chr(i+65): htmls[i] for i in range(len(htmls))}
 
         # I can't decide how this ought to be designed (idk anything about UX), but this is how it's gonna work:
         # there are two modes: slow and fast
@@ -347,24 +352,41 @@ class UCLA(commands.Cog):
         if mode == "slow":
             browser = await launch()
 
-            for key, name_soup_pair in htmls.items():
+            for i, name_soup_pair in enumerate(htmls):
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
                 class_id = self.parse_class_id(str(name_soup_pair[1]))
-                await self._generate_image(browser, class_id, ctx, key=key)
+                await self._generate_image(browser, class_id, ctx, letter_choice=chr(i+65))
 
             await browser.close()
 
         else: # we're in fast mode
-            for key, name_soup_pair in htmls.items():
-                # await ctx.channel.send(f"Choice {key}: " + json.dumps(self._parse_class(class_html), indent=4))
+            for i, name_soup_pair in enumerate(htmls):
                 parsed_class = self._parse_class(name_soup_pair)
-                await ctx.channel.send(embed=self._generate_embed(parsed_class, key=key))
 
+                if display_description:
+                    r = requests.get(parsed_class["url"])
+                    soup = BeautifulSoup(r.content, "lxml")
+                    parsed_class['description'] = soup.find("p",class_="class_detail_title", text="Course Description").findNext('p').contents[0]
+                
+                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i+65)))
+
+        return htmls
+    
+    @commands.command(help="Search for a class in preparation to add to watch list")
+    @is_admin()
+    async def searchclass(self, ctx, subject: str, catalog: str, mode="slow"):
+        htmls = await self._generate_class_view(ctx, subject, catalog, mode)
+
+        if len(htmls) == 0:
+            await ctx.send(f"Couldn't find that class.")
+            return
+
+        emoji_choices = [chr(A_EMOJI_INT+n) for n in range(len(htmls))]
 
         while True:
             status = await ctx.send(f"Choose the class you want keep an eye on.")
-            for key in htmls:
-                await status.add_reaction(CHOICES[key])
+            for emoji_choice in emoji_choices:
+                await status.add_reaction(emoji_choice)
             await status.add_reaction(NO_EMOJI)
 
             try:
@@ -375,15 +397,15 @@ class UCLA(commands.Cog):
                 if r.emoji == NO_EMOJI:
                     await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
                     return 
-                if r.emoji in CHOICES.values():
-                    for key, value in CHOICES.items():
-                        if r.emoji == value:
-                            await status.edit(content=f"You've selected choice {key}")
-                            my_choice = key
-                            break
+                if r.emoji in emoji_choices:
+                    await status.edit(content=f"You've selected choice {r.emoji}")
+                    # The index of our choice will correspond with how "far" out emoji
+                    # choice was past number that corresponds with the A emoji
+                    choice_index = ord(r.emoji) - A_EMOJI_INT
                     break
 
-        if my_choice:
+        if choice_index:
+            name_soup_pair = htmls[choice_index]
             # read
             try:
                 a_file = open("classes_to_watch.json", "r")
@@ -415,47 +437,21 @@ class UCLA(commands.Cog):
     @commands.command(help="Display info about a class, including description")
     @is_admin()
     async def displayclass(self, ctx, subject: str, catalog: str, mode="fast"):
-        # TODO: Make this not redundant with searchclass lol
-        model_choices = list(new_search_for_class_model(subject, catalog))
-
-        # which model to choose? display choices to user, let them choose, then add to JSON
-        htmls = []
-        for name_model_pair in model_choices:
-            # await ctx.channel.send(model)
-            print(name_model_pair[1])
-            htmls = htmls + self.check_class(name_model_pair)
-
-        htmls = {chr(i+65): htmls[i] for i in range(len(htmls))}
-
-        if mode == "slow":
-            browser = await launch()
-
-            for key, name_soup_pair in htmls.items():
-                # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
-                class_id = self.parse_class_id(str(name_soup_pair[1]))
-                await self._generate_image(browser, class_id, ctx)
-
-            await browser.close()
-
-        else: # we're in fast mode
-            for key, name_soup_pair in htmls.items():
-                # await ctx.channel.send(f"Choice {key}: " + json.dumps(self._parse_class(class_html), indent=4))
-                parsed_class = self._parse_class(name_soup_pair)
-                r = requests.get(parsed_class["url"])
-
-                soup = BeautifulSoup(r.content, "lxml")
-                parsed_class['description'] = soup.find("p",class_="class_detail_title", text="Course Description").findNext('p').contents[0]
-                await ctx.channel.send(embed=self._generate_embed(parsed_class, key=key))
+        self._generate_class_view(ctx, subject, catalog, mode, display_description=True)
 
 
     def parse_class_id(self, html):
+        """Given html from GetCourseSummary endpoint, extract the class number. Uses assumption that class number is always the first 9 digits of a certain div"""
         regex = '<div class="row-fluid data_row primary-row class-info class-not-checked" id="([\d]{9})_'
         match = re.search(regex, str(html))
         return match[1] if match else None
         
 
     def check_class(self, name_model_pair):
-        """Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc."""
+        """Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc.
+        
+        Returns list of tuples of the form (class name from class_names JSON, associated soup from that corresponding model from class_names JSON)
+        """
         name = name_model_pair[0]
         model = name_model_pair[1]
         FilterFlags = '{"enrollment_status":"O,W,C,X,T,S","advanced":"y","meet_days":"M,T,W,R,F","start_time":"8:00 am","end_time":"7:00 pm","meet_locations":null,"meet_units":null,"instructor":null,"class_career":null,"impacted":null,"enrollment_restrictions":null,"enforced_requisites":null,"individual_studies":null,"summer_session":null}'
@@ -518,11 +514,11 @@ class UCLA(commands.Cog):
             soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
             enrollment_data = soup.select_one("div[id$=-status_data]").text
 
-            await ctx.channel.send(f'{my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
+            # await ctx.channel.send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
             
             #  Current status  changed from   previously recorded status
             if enrollment_data      !=         my_class["enrollment_data"]:
-                await ctx.channel.send(f'Change! {my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
+                await ctx.channel.send(f'{my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
 
                 my_class['enrollment_data'] = enrollment_data
 
@@ -544,7 +540,7 @@ class UCLA(commands.Cog):
         self.check_for_change.start(ctx)
 
 
-        
+
 
 
 
