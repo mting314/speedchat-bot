@@ -65,6 +65,11 @@ def new_search_for_class_model(subject, catalog):
             if my_class[0].split()[0] == str(catalog):
                 yield (f"{better_subject_name} {my_class[0]}", my_class[1])
 
+def parse_class_id(html):
+    """Given html from GetCourseSummary endpoint, extract the class number. Uses assumption that class number is always the first 9 digits of a certain div"""
+    regex = '<div class="row-fluid data_row primary-row class-info class-not-checked" id="([\d]{9})_'
+    match = re.search(regex, str(html))
+    return match[1] if match else None
 
 # Commands for looking up UCLA classes
 class UCLA(commands.Cog):
@@ -75,18 +80,6 @@ class UCLA(commands.Cog):
         f.close()
         # self.class_regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("%s",({"Term":"20W","SubjectAreaCode":"%s","CatalogNumber":"%s","IsRoot":true,"SessionGroup":"%%","ClassNumber":"\W*%s\W*","SequenceNumber":null,"Path":"%s","MultiListedClassFlag":"n",.*?})'
         
-        # self.tenativeRegex     = re.compile('^Tenative')
-        # self.cancelledRegex    = re.compile('^Cancelled')
-        # self.closedByDeptRegex = re.compile('^Closed by Dept[a-zA-Z,/ ]*(\((?P<Capacity>\d+) capacity, (?P<EnrolledCount>\d+) enrolled, (?P<WaitlistedCount>\d+) waitlisted\))?')
-        # self.classFullRegex    = re.compile('ClosedClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
-        # self.classOpenRegex    = re.compile('Open(?P<EnrolledCount>\d+) of (?P<Capacity>\d+) Enrolled(\d+) Spots? Left')
-        # self.waitlistOnlyRegex = re.compile('^Waitlist$')
-        # self.waitlistFullRegex = re.compile('^WaitlistClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?')
-        # # Waitlist regexes
-        # self.waitlistOpenRegex   = re.compile('(?P<WaitlistCount>\d+) of (?P<WaitlistCapacity>\d+) Taken')
-        # self.noWaitlistRegex     = re.compile('No Waitlist')
-        # self.waitlistClosedRegex = re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)')
-
         self.status_regexes = {
             "tenative"    : re.compile('^Tenative'),
             "cancelled"   : re.compile('^Cancelled'),
@@ -97,9 +90,11 @@ class UCLA(commands.Cog):
             "waitlistFull": re.compile('^WaitlistClass Full \((?P<Capacity>\d+)\)(, Over Enrolled By (?P<OverenrolledCount>\d+))?'),
         }
         # Waitlist regexes
-        self.waitlistOpenRegex   = re.compile('(?P<WaitlistCount>\d+) of (?P<WaitlistCapacity>\d+) Taken')
-        self.noWaitlistRegex     = re.compile('No Waitlist')
-        self.waitlistClosedRegex = re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)')
+        self.waitlist_regexes = {
+            "waitlistOpen"   : re.compile('(?P<WaitlistCount>\d+) of (?P<WaitlistCapacity>\d+) Taken'),
+            "noWaitlist"     : re.compile('No Waitlist'),
+            "waitlistClosed" : re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)'),
+        }
 
         self.term = "21W"
         self.reload_json()
@@ -123,7 +118,7 @@ class UCLA(commands.Cog):
         if "waitlist_status" in parsed_class:
             embedVar.add_field(name="Waitlist Status", value=f'{parsed_class["waitlist_status"]} ({parsed_class["waitlist_count"]}/{parsed_class["waitlist_capacity"]} taken)', inline=True)
         else:
-            embedVar.add_field(name="Waitlist Status", value='No waitlist... yet...', inline=True)
+            embedVar.add_field(name="Waitlist Status", value='Unable to parse', inline=True)
 
         if "description" in parsed_class:
             embedVar.add_field(name="Course Description", value=parsed_class['description'], inline=False)
@@ -240,31 +235,32 @@ class UCLA(commands.Cog):
                 # i.e. "ClosedClass Full (45), Over Enrolled By 3" doesn't give any info on the count
                 # but since the class is full, we know that the enrollment count and capacity have to match
                 # and are both 45. This implements that logic.
-                if enrollment_dict['enrollment_status'] == self.status_regexes["classFull"] or enrollment_dict['enrollment_status'] == self.status_regexes["waitlistFull"]:
+                if enrollment_dict['enrollment_status'] == "classFull" or enrollment_dict['enrollment_status'] == "waitlistFull":
                     enrollment_dict["enrollment_count"] = enrollment_dict["enrollment_capacity"]
                 return enrollment_dict
 
-    def _parseWaitlistData(self, potential_status, statusRegex, my_string):
-        matches = statusRegex.match(my_string)
-        if matches is None:
-            return None
-        else:
-            if statusRegex == self.noWaitlistRegex:
-                return {
-                    "waitlist_status": potential_status, 
-                    "waitlist_capacity": "N/A",
-                    "waitlist_count": "N/A",
-                }
+    def _parseWaitlistData(self, my_string):
+        for potential_status, regex in self.waitlist_regexes.items():
+            matches = regex.match(my_string)
+            if matches is None:
+                continue
             else:
-                match_dict = matches.groupdict()
-                waitlist_dict = {
-                    "waitlist_status": potential_status, 
-                    "waitlist_capacity": int(match_dict["WaitlistCapacity"] or 0) if "WaitlistCapacity" in match_dict else None, 
-                    "waitlist_count": int(match_dict["WaitlistCount"] or 0) if "WaitlistCount" in match_dict else None,
-                }
-                if waitlist_dict['waitlist_status'] == self.waitlistClosedRegex:
-                    waitlist_dict["waitlist_count"] = waitlist_dict["enrollment_capacity"]
-                return waitlist_dict
+                if potential_status == self.waitlist_regexes["noWaitlist"]:
+                    return {
+                        "waitlist_status": potential_status, 
+                        "waitlist_capacity": "N/A",
+                        "waitlist_count": "N/A",
+                    }
+                else:
+                    match_dict = matches.groupdict()
+                    waitlist_dict = {
+                        "waitlist_status": potential_status, 
+                        "waitlist_capacity": int(match_dict["WaitlistCapacity"] or 0) if "WaitlistCapacity" in match_dict else None, 
+                        "waitlist_count": int(match_dict["WaitlistCount"] or 0) if "WaitlistCount" in match_dict else None,
+                    }
+                    if waitlist_dict["waitlist_status"] == "waitlistClosed":
+                        waitlist_dict["waitlist_count"] = waitlist_dict["waitlist_capacity"]
+                    return waitlist_dict
 
 
 
@@ -294,7 +290,7 @@ class UCLA(commands.Cog):
         class_dict =  {
             "subject":  details_url_parts['subj_area_cd'].strip(),
             "class_no": details_url_parts['class_no'].strip(),
-            "class_id": self.parse_class_id(str(soup)), 
+            "class_id": parse_class_id(str(soup)), 
             "class_name": name,
             "term": term or self.term,
             "section_name": section_name,
@@ -306,15 +302,10 @@ class UCLA(commands.Cog):
             "enrollment_data": enrollment_data, 
         }
 
-        # BEGIN PARSING STATUS (the hard part)
+        # BEGIN PARSING STATUS
 
-        # make a guess at what the enrollment_status is, and return the first one that works
-        a =    self._ParseEnrollmentStatus(enrollment_data) or None
-        # make a guess at what the waitlisting status is like (open with some x out of y spots, no waitlist, or )
-        b =    self._parseWaitlistData("Waitlist Open", self.waitlistOpenRegex, waitlist_data) \
-            or self._parseWaitlistData("No Waitlist", self.noWaitlistRegex, waitlist_data)\
-            or self._parseWaitlistData("Waitlist Closed", self.waitlistClosedRegex, waitlist_data)\
-            or None
+        a = self._ParseEnrollmentStatus(enrollment_data) or None
+        b = self._parseWaitlistData(waitlist_data) or None
 
 
         if a: class_dict = {**class_dict, **a} # grr if this were python 3.9 we could just use |
@@ -354,7 +345,7 @@ class UCLA(commands.Cog):
 
             for i, name_soup_pair in enumerate(htmls):
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the GetCourseSummary html
-                class_id = self.parse_class_id(str(name_soup_pair[1]))
+                class_id = parse_class_id(str(name_soup_pair[1]))
                 await self._generate_image(browser, class_id, ctx, letter_choice=chr(i+65))
 
             await browser.close()
@@ -404,7 +395,8 @@ class UCLA(commands.Cog):
                     choice_index = ord(r.emoji) - A_EMOJI_INT
                     break
 
-        if choice_index:
+        if choice_index is not None:
+            # based on the emoji index, choose the corresponding entry of the htmls
             name_soup_pair = htmls[choice_index]
             # read
             try:
@@ -414,7 +406,7 @@ class UCLA(commands.Cog):
             except (FileNotFoundError, json.JSONDecodeError):
                 json_object = {"classes": []}
 
-            class_id = self.parse_class_id(str(name_soup_pair[1]))
+            class_id = parse_class_id(str(name_soup_pair[1]))
 
             # check for duplicates
             for my_class in json_object["classes"]:
@@ -424,7 +416,7 @@ class UCLA(commands.Cog):
 
             # write class_id, *current* enrollment_status, and a name to the json
             json_object["classes"].append({
-                "class_id": self.parse_class_id(str(name_soup_pair[1])),
+                "class_id": parse_class_id(str(name_soup_pair[1])),
                 "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
                 "class_name": name_soup_pair[0],
                 })
@@ -440,11 +432,7 @@ class UCLA(commands.Cog):
         self._generate_class_view(ctx, subject, catalog, mode, display_description=True)
 
 
-    def parse_class_id(self, html):
-        """Given html from GetCourseSummary endpoint, extract the class number. Uses assumption that class number is always the first 9 digits of a certain div"""
-        regex = '<div class="row-fluid data_row primary-row class-info class-not-checked" id="([\d]{9})_'
-        match = re.search(regex, str(html))
-        return match[1] if match else None
+
         
 
     def check_class(self, name_model_pair):
@@ -476,7 +464,7 @@ class UCLA(commands.Cog):
             json_object = json.load(a_file)
             a_file.close()
         except (FileNotFoundError, json.JSONDecodeError):
-            await ctx.channel.send("Looks like you don't have any classes kept track of, or the file got malformed.\nIf the file is malformed, try clearing it.")
+            await ctx.channel.send("Looks like you don't have any classes kept track of, or the file got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
 
         if mode == "fast":
             for my_class in json_object["classes"]:
@@ -495,6 +483,12 @@ class UCLA(commands.Cog):
             await browser.close()
 
 
+    @commands.command(help='Clear classes from the "to watch" list')
+    async def clear_classes(self, ctx):
+        if os.path.exists("classes_to_watch.json"):
+            os.remove("classes_to_watch.json")
+
+        await ctx.send("Classes cleared.")
 
     @tasks.loop(seconds=15.0)
     async def check_for_change(self, ctx):
