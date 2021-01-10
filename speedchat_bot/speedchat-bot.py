@@ -37,9 +37,8 @@ async def on_ready():
     logging.info(cli)
     logging.info(f"Successfully logged in as {cli.user}.")
     print(f"Successfully logged in as {cli.user}.")
-    await cli.change_presence(status=discord.Status.online,
-                              activity=discord.Game(
-                                  name=STARTUP_STATUS[int(random.randint(0, len(STARTUP_STATUS) - 1))]))
+    await cli.change_presence(status=discord.Status.dnd,
+                              activity=discord.CustomActivity("Not updating"))
 
 
 # cog setup

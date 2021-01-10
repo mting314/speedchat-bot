@@ -1,9 +1,2 @@
-# 紫
+# OK, Find-a-class-and-Enroll-er
 
-A bot for my servers. Evolves with the times.
-
-## Features
-* Concerningly fast bulk deletion
-* Unprofessional personality
-* anime profile picture
-* hardcoded unicode points?????

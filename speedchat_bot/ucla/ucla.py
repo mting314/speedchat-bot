@@ -402,7 +402,23 @@ class UCLA(commands.Cog):
 
     @commands.command(help="Search for a class in preparation to add to watch list")
     @is_admin()
-    async def searchclass(self, ctx, subject: str, catalog: str, mode="slow"):
+    async def search_class(self, ctx, *, args):
+    # async def search_class(self, ctx, subject: str, catalog: str, mode="slow"):
+        # PARSE ARGUMENTS
+
+        arg_list = args.split(' ')
+        # if the last word is "fast" or "slow", that's the mode
+        if arg_list[-1].lower() in ["fast, slow"]:
+            mode = arg_list[-1].lower()
+            arg_list.pop()
+        else:
+            mode = "fast"
+
+        catalog = arg_list.pop()
+
+        subject = ' '.join(arg_list)
+
+
         htmls = await self._generate_class_view(ctx, subject, catalog, mode, choices=True)
 
         if len(htmls) == 0:
@@ -507,7 +523,7 @@ class UCLA(commands.Cog):
             json.dump(json_object, a_file)
             a_file.close()
 
-            print("you removed class", removed_class)
+            await ctx.send("You removed " + removed_class["class_name"])
 
     def check_class(self, name_model_pair):
         """Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc.
@@ -566,6 +582,11 @@ class UCLA(commands.Cog):
 
     @tasks.loop(seconds=15.0)
     async def check_for_change(self, ctx):
+        """
+        Loop that when activated, every 15 seconds checks if a class's status has changed.
+        If a class's status has changed,
+        
+        """
         try:
             a_file = open("classes_to_watch.json", "r")
             json_object = json.load(a_file)
@@ -585,11 +606,12 @@ class UCLA(commands.Cog):
             # await ctx.channel.send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
             #  Current status  changed from   previously recorded status
-            if enrollment_data != my_class["enrollment_data"]:
+            if enrollment_data      !=        my_class["enrollment_data"]:
                 await ctx.channel.send(
-                    f'{my_class["class_name"]} changed from {my_class["enrollment_data"]} to {enrollment_data}')
+                    f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                 my_class['enrollment_data'] = enrollment_data
+                need_change = True
 
         if need_change:
             a_file = open("classes_to_watch.json", "w")
@@ -599,9 +621,15 @@ class UCLA(commands.Cog):
         print(self.check_for_change.current_loop)
 
     @check_for_change.after_loop
-    async def after_slow_count(self):
-        print('done!')
+    async def after_slow_count(self, ctx):
+        await ctx.send("Stopped checking for classes")
 
-    @commands.command(help="Count")
+    @commands.command(help="Start the count")
     async def start_the_count(self, ctx):
         self.check_for_change.start(ctx)
+        self.bot.change_presence(status=discord.Status.online, activity=discord.CustomActivity("Updating"))
+
+    @commands.command(help="Stop the count")
+    async def stop_the_count(self, ctx):
+        self.check_for_change.stop(ctx)
+        self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.CustomActivity("Not updating"))
