@@ -186,7 +186,6 @@ class UCLA(commands.Cog):
             os.remove("candidate.png")
 
     @commands.command(help="Switch to a new term for searching (i.e. to 20F)")
-    @is_admin()
     async def switch_term(self, ctx, new_term: str):
         # First, is this the right format?
         template = re.compile('[\d]{2}[FWS]{1}')  # i.e. 20F
@@ -401,9 +400,7 @@ class UCLA(commands.Cog):
         return htmls
 
     @commands.command(help="Search for a class in preparation to add to watch list")
-    @is_admin()
     async def search_class(self, ctx, *, args):
-    # async def search_class(self, ctx, subject: str, catalog: str, mode="slow"):
         # PARSE ARGUMENTS
 
         arg_list = args.split(' ')
@@ -479,12 +476,10 @@ class UCLA(commands.Cog):
             a_file.close()
 
     @commands.command(help="Display info about a class, including description")
-    @is_admin()
     async def displayclass(self, ctx, subject: str, catalog: str, mode="fast"):
         await self._generate_class_view(ctx, subject, catalog, mode, display_description=True)
 
     @commands.command(help="Choose a class to remove from watchlist.")
-    @is_admin()
     async def remove_class(self, ctx, mode="fast"):
         json_object = await self.see_classes(ctx, mode, choices=True)
 

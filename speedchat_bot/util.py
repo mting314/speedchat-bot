@@ -80,7 +80,6 @@ class Util(commands.Cog):
 
     # bulk deletion tool
     @commands.command(name="d", help="Delete messages")
-    @is_admin()
     async def delete(self, ctx, *args):
         status = await ctx.send("Standby...")
 
