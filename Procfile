@@ -1,1 +1,1 @@
-web: python speedchat_bot/speedchat-bot.py
+worker: python speedchat_bot/speedchat-bot.py

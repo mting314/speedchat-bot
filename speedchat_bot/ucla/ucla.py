@@ -627,9 +627,9 @@ class UCLA(commands.Cog):
     @commands.command(help="Start the count")
     async def start_the_count(self, ctx):
         self.check_for_change.start(ctx)
-        self.bot.change_presence(status=discord.Status.online, activity=discord.CustomActivity("Updating"))
+        await self.bot.change_presence(status=discord.Status.online, activity=discord.CustomActivity("Updating"))
 
     @commands.command(help="Stop the count")
     async def stop_the_count(self, ctx):
         self.check_for_change.stop(ctx)
-        self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.CustomActivity("Not updating"))
+        await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.CustomActivity("Not updating"))
