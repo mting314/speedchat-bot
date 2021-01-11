@@ -403,9 +403,11 @@ class UCLA(commands.Cog):
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
 
+        user_id = ctx.message.author.id
+
         arg_list = args.split(' ')
         # if the last word is "fast" or "slow", that's the mode
-        if arg_list[-1].lower() in ["fast, slow"]:
+        if arg_list[-1].lower() in ["fast", "slow"]:
             mode = arg_list[-1].lower()
             arg_list.pop()
         else:
@@ -454,18 +456,24 @@ class UCLA(commands.Cog):
                 json_object = json.load(a_file)
                 a_file.close()
             except (FileNotFoundError, json.JSONDecodeError):
-                json_object = {"classes": []}
+                json_object = {"classes": {}}
 
             class_id = parse_class_id(str(name_soup_pair[1]))
 
+
+            # initialize user's list of watched classes if no entries yet
+            if user_id not in json_object["classes"]:
+                json_object["classes"][user_id] = []
+
+
             # check for duplicates
-            for my_class in json_object["classes"]:
+            for my_class in json_object["classes"][user_id]:
                 if class_id == my_class["class_id"]:
                     await ctx.channel.send("You're already keeping track of that class!")
                     return
 
             # write class_id, *current* enrollment_status, and a name to the json
-            json_object["classes"].append({
+            json_object["classes"][user_id].append({
                 "class_id": parse_class_id(str(name_soup_pair[1])),
                 "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
                 "class_name": name_soup_pair[0],
@@ -476,17 +484,20 @@ class UCLA(commands.Cog):
             a_file.close()
 
     @commands.command(help="Display info about a class, including description")
-    async def displayclass(self, ctx, subject: str, catalog: str, mode="fast"):
+    async def display_class(self, ctx, subject: str, catalog: str, mode="fast"):
         await self._generate_class_view(ctx, subject, catalog, mode, display_description=True)
 
     @commands.command(help="Choose a class to remove from watchlist.")
     async def remove_class(self, ctx, mode="fast"):
+
+        user_id = ctx.message.author.name
+
         json_object = await self.see_classes(ctx, mode, choices=True)
 
-        if json_object is None:
+        if json_object is None or user_id not in json_object["classes"]:
             return
 
-        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(json_object["classes"]))]
+        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(json_object["classes"][user_id]))]
 
         while True:
             status = await ctx.send(f"Choose the class you want keep an eye on.")
@@ -511,7 +522,7 @@ class UCLA(commands.Cog):
 
         if choice_index is not None:
             # based on the emoji index, choose the corresponding entry of the htmls
-            removed_class = json_object["classes"].pop(choice_index)
+            removed_class = json_object["classes"][user_id].pop(choice_index)
 
 
             a_file = open("classes_to_watch.json", "w")
@@ -541,17 +552,22 @@ class UCLA(commands.Cog):
 
     @commands.command(help="see classes you're keeping track of")
     async def see_classes(self, ctx, mode="fast", choices=False):
+
+        user_id = ctx.message.author.name
+
         try:
             a_file = open("classes_to_watch.json", "r")
             json_object = json.load(a_file)
+            print(json_object["classes"][user_id][0])
             a_file.close()
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (FileNotFoundError, json.JSONDecodeError, KeyError, IndexError):
             await ctx.channel.send(
                 "Looks like you don't have any classes kept track of, or the file got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
             return None
 
+
         if mode == "fast":
-            for n, my_class in enumerate(json_object["classes"]):
+            for n, my_class in enumerate(json_object["classes"][user_id]):
                 # get class from public url
                 params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
@@ -561,12 +577,17 @@ class UCLA(commands.Cog):
 
         else:  # we're in the slow mode
             browser = await launch()
-            for n, my_class in enumerate(json_object["classes"]):
+            for n, my_class in enumerate(json_object["classes"][user_id]):
                 self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
             await browser.close()
 
         return json_object
 
+
+    @commands.command()
+    async def DM(self, ctx, user: discord.User, *, message=None):
+        message = message or "This Message is sent via DM"
+        await user.send(message)
 
     @commands.command(help='Clear classes from the "to watch" list')
     async def clear_classes(self, ctx):
@@ -592,26 +613,27 @@ class UCLA(commands.Cog):
 
         need_change = False
 
-        for my_class in json_object["classes"]:
-            params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
-            final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
-            soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
-            enrollment_data = soup.select_one("div[id$=-status_data]").text
+        for user_id in json_object["classes"]:
+            for my_class in json_object["classes"][user_id]:
+                params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
+                final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
+                soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
+                enrollment_data = soup.select_one("div[id$=-status_data]").text
 
-            # await ctx.channel.send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                await self.bot.get_user(user_id).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
-            #  Current status  changed from   previously recorded status
-            if enrollment_data      !=        my_class["enrollment_data"]:
-                await ctx.channel.send(
-                    f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                #  Current status  changed from   previously recorded status
+                if enrollment_data      !=        my_class["enrollment_data"]:
+                    await (
+                        f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
-                my_class['enrollment_data'] = enrollment_data
-                need_change = True
+                    my_class['enrollment_data'] = enrollment_data
+                    need_change = True
 
-        if need_change:
-            a_file = open("classes_to_watch.json", "w")
-            json.dump(json_object, a_file)
-            a_file.close()
+            if need_change:
+                a_file = open("classes_to_watch.json", "w")
+                json.dump(json_object, a_file)
+                a_file.close()
 
         print(self.check_for_change.current_loop)
 
