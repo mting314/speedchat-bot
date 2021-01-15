@@ -54,7 +54,6 @@ def _generate_url(base_url, params):
 def parse_catalog_no(catalog):
     """
     
-
     catalog: String of the class's number, i.e. 61 or 131AH or M120
     
     """
@@ -63,26 +62,6 @@ def parse_catalog_no(catalog):
         return f'{match[1]:>04s}' + match[2]
     else:
         return f'{catalog:>04s}'
-
-
-def _search_for_class_model(subject, catalog):
-    """
-    Finds the model for each class that matches subject+catalog, and also attaches the "human readable" class name.
-
-    subject: String of the class's subject in CAPS format, i.e. (MATH or COM SCI)
-    catalog: String of the class's number, i.e. 61 or 131AH or M120
-
-    returns a generator of tuples (class's "human readable name", model) that match the given subject + catalog
-    e.g. (Mathematics (MATH) 19 - COVID-19: Patterns and Predictions in Art, {\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH...)
-    
-    """
-    with open("class_names.json") as fp:
-        # TODO: Maybe separate subjects into their own json?
-        data = json.load(fp)['class_names']
-        classes_in_subject = data[subject]
-        for my_class in classes_in_subject:
-            if my_class[0].split()[0] == str(catalog):
-                yield f"{subject} {my_class[0]}", my_class[1]
 
 
 def parse_class_id(html):
@@ -99,10 +78,9 @@ def parse_class_id(html):
 class UCLA(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        f = open('speedchat_bot/ucla/subjects.json')
-        self.subjectsJSON = json.load(f)
-        f.close()
 
+        # Regexes (regexi?) to catch all the different cases for the enrollment statuses of a class
+        # also contain named capture groups so it's easy to pick up capacity vs count
         self.status_regexes = {
             "tenative": re.compile('^Tenative'),
             "cancelled": re.compile('^Cancelled'),
@@ -122,13 +100,36 @@ class UCLA(commands.Cog):
             "waitlistClosed": re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)'),
         }
 
+        # The main urls we'll be scraping from
         self.PUBLIC_RESULTS_URL     = "https://sa.ucla.edu/ro/Public/SOC/Results"
         self.GET_COURSE_SUMMARY_URL = "https://sa.ucla.edu/ro/Public/SOC/Results/GetCourseSummary"
         self.COURSE_TITLES_VIEW     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
 
         self.term = "21W"
-        self.reload_json()
+        self.data_dir = f"speedchat_bot/ucla_data/{self.term}"
+        self._reload_classes()
         
+    
+    def _search_for_class_model(self, subject, catalog):
+        """
+        Finds the model for each class that matches subject+catalog, and also attaches the "human readable" class name.
+
+        subject: String of the class's subject in CAPS format, i.e. (MATH or COM SCI)
+        catalog: String of the class's number, i.e. 61 or 131AH or M120
+
+        returns a generator of tuples (class's "human readable name", model) that match the given subject + catalog
+        e.g. (Mathematics (MATH) 19 - COVID-19: Patterns and Predictions in Art, {\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH...)
+        
+        """
+        with open(self.data_dir + "/class_names.json") as fp:
+            # TODO: Maybe separate subjects into their own json?
+            data = json.load(fp)['class_names']
+            classes_in_subject = data[subject]
+            for my_class in classes_in_subject:
+                if my_class[0].split()[0] == str(catalog):
+                    yield f"{subject} {my_class[0]}", my_class[1]
+
+
 
     def _generate_embed(self, parsed_class, letter_choice=None):
         """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
@@ -199,11 +200,24 @@ class UCLA(commands.Cog):
 
         # If we pass the checks, actually switch term, and initialize class list
         self.term = new_term
-        self.reload_json()
+        self._reload_classes()
 
-    def reload_json(self):
-        if os.path.exists("class_names.json"):
-            with open('class_names.json') as fp:
+    @commands.command(help="Search for a class in preparation to add to watch list")    
+    async def reload_classes(self, ctx):
+        self._reload_classes()
+
+
+
+    def _reload_classes(self):
+        # Load list of subjects parsed from UCLA website
+        # TODO: programatically get subjects.json
+        f = open(self.data_dir + "/subjects.json")
+        self.subjectsJSON = json.load(f)
+        f.close()
+
+
+        if os.path.exists(self.data_dir + "/class_names.json"):
+            with open(self.data_dir + "/class_names.json") as fp:
                 data = json.load(fp)
                 if data["term"] == self.term:  # no need to update json
                     return
@@ -240,7 +254,7 @@ class UCLA(commands.Cog):
             class_name_dict[subject["value"]] = all_classes
             print("loaded", subject["label"])
 
-        class_names_file = open("class_names.json", "w")
+        class_names_file = open(self.data_dir + "/class_names.json", "w")
         class_names_file.write(
             json.dumps({"term": self.term, "class_names": class_name_dict}, indent=4, sort_keys=True))
         class_names_file.close()
@@ -353,7 +367,7 @@ class UCLA(commands.Cog):
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
         on the resulting soups (from GetCourseSummary). Returns that lsit of name_soup_pairs.
         """
-        model_choices = list(_search_for_class_model(subject, catalog))
+        model_choices = list(self._search_for_class_model(subject, catalog))
 
         htmls = []
         for name_model_pair in model_choices:
@@ -410,7 +424,8 @@ class UCLA(commands.Cog):
         if arg_list[-1].lower() in ["fast", "slow"]:
             mode = arg_list[-1].lower()
             arg_list.pop()
-        else:
+        else: 
+            # otherwise, default to fast if not specified
             mode = "fast"
 
         catalog = arg_list.pop()
@@ -452,34 +467,35 @@ class UCLA(commands.Cog):
             name_soup_pair = htmls[choice_index]
             # read
             try:
-                a_file = open("classes_to_watch.json", "r")
+                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
                 json_object = json.load(a_file)
                 a_file.close()
             except (FileNotFoundError, json.JSONDecodeError):
-                json_object = {"classes": {}}
+                json_object = []
 
             class_id = parse_class_id(str(name_soup_pair[1]))
 
 
             # initialize user's list of watched classes if no entries yet
-            if user_id not in json_object["classes"]:
-                json_object["classes"][user_id] = []
+            # if user_id not in json_object["classes"]:
+            #     json_object["classes"][user_id] = []
 
 
             # check for duplicates
-            for my_class in json_object["classes"][user_id]:
+            for my_class in json_object:
                 if class_id == my_class["class_id"]:
                     await ctx.channel.send("You're already keeping track of that class!")
                     return
 
             # write class_id, *current* enrollment_status, and a name to the json
-            json_object["classes"][user_id].append({
+            json_object.append({
                 "class_id": parse_class_id(str(name_soup_pair[1])),
                 "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
                 "class_name": name_soup_pair[0],
+                "term": self.term,
             })
 
-            a_file = open("classes_to_watch.json", "w")
+            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
             json.dump(json_object, a_file)
             a_file.close()
 
@@ -490,14 +506,14 @@ class UCLA(commands.Cog):
     @commands.command(help="Choose a class to remove from watchlist.")
     async def remove_class(self, ctx, mode="fast"):
 
-        user_id = ctx.message.author.name
+        user_id = ctx.message.author.id
 
         json_object = await self.see_classes(ctx, mode, choices=True)
 
-        if json_object is None or user_id not in json_object["classes"]:
+        if json_object is None:
             return
 
-        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(json_object["classes"][user_id]))]
+        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(json_object))]
 
         while True:
             status = await ctx.send(f"Choose the class you want keep an eye on.")
@@ -522,12 +538,15 @@ class UCLA(commands.Cog):
 
         if choice_index is not None:
             # based on the emoji index, choose the corresponding entry of the htmls
-            removed_class = json_object["classes"][user_id].pop(choice_index)
+            removed_class = json_object.pop(choice_index)
 
-
-            a_file = open("classes_to_watch.json", "w")
-            json.dump(json_object, a_file)
-            a_file.close()
+            if len(json_object) == 0:
+                if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
+                    os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
+            else:
+                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
+                json.dump(json_object, a_file)
+                a_file.close()
 
             await ctx.send("You removed " + removed_class["class_name"])
 
@@ -553,21 +572,21 @@ class UCLA(commands.Cog):
     @commands.command(help="see classes you're keeping track of")
     async def see_classes(self, ctx, mode="fast", choices=False):
 
-        user_id = ctx.message.author.name
+        user_id = ctx.message.author.id
 
         try:
-            a_file = open("classes_to_watch.json", "r")
+            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
             json_object = json.load(a_file)
-            print(json_object["classes"][user_id][0])
+            print(json_object[0])
             a_file.close()
         except (FileNotFoundError, json.JSONDecodeError, KeyError, IndexError):
             await ctx.channel.send(
-                "Looks like you don't have any classes kept track of, or the file got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
+                "Looks like you don't have any classes kept track of, or your data got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
             return None
 
 
         if mode == "fast":
-            for n, my_class in enumerate(json_object["classes"][user_id]):
+            for n, my_class in enumerate(json_object):
                 # get class from public url
                 params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
@@ -577,22 +596,24 @@ class UCLA(commands.Cog):
 
         else:  # we're in the slow mode
             browser = await launch()
-            for n, my_class in enumerate(json_object["classes"][user_id]):
+            for n, my_class in enumerate(json_object):
                 self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
             await browser.close()
 
         return json_object
 
 
-    @commands.command()
-    async def DM(self, ctx, user: discord.User, *, message=None):
-        message = message or "This Message is sent via DM"
-        await user.send(message)
+    # @commands.command()
+    # async def DM(self, ctx, user: discord.User, *, message=None):
+    #     message = message or "This Message is sent via DM"
+    #     await user.send(message)
 
-    @commands.command(help='Clear classes from the "to watch" list')
+    @commands.command(help='Clear classes a user\'s "to watch" list')
     async def clear_classes(self, ctx):
-        if os.path.exists("classes_to_watch.json"):
-            os.remove("classes_to_watch.json")
+        user_id = ctx.message.author.id
+
+        if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
+            os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
 
         await ctx.send("Classes cleared.")
 
@@ -603,18 +624,23 @@ class UCLA(commands.Cog):
         If a class's status has changed,
         
         """
-        try:
-            a_file = open("classes_to_watch.json", "r")
-            json_object = json.load(a_file)
-            a_file.close()
-        except (FileNotFoundError, json.JSONDecodeError):
-            # The file is not there/unreadable, no point going on to check
-            return
 
-        need_change = False
+        # iterate through all the files in the watchlist directory
+        for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
+            try:
+                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
+                json_object = json.load(a_file)
+                a_file.close()
+            except (FileNotFoundError, json.JSONDecodeError):
+                # The file is not there/unreadable, no point going on to check
+                return
 
-        for user_id in json_object["classes"]:
-            for my_class in json_object["classes"][user_id]:
+            user_id, _ = os.path.splitext(user_watchlist)
+
+            need_change = False
+
+
+            for my_class in json_object:
                 params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
@@ -631,7 +657,7 @@ class UCLA(commands.Cog):
                     need_change = True
 
             if need_change:
-                a_file = open("classes_to_watch.json", "w")
+                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
                 json.dump(json_object, a_file)
                 a_file.close()
 

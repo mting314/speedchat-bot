@@ -70,6 +70,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"A\\u0026O SCI\",\"CatalogNumber\":\"0186    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AOSCI0186\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4NiAgICBBT1NDSTAxODY=\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"A\\u0026O SCI\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AOSCI0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBBT1NDSTAxODlIQw==\"}"
+            ],
+            [
                 "202 - Introduction to Ocean Science",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"A\\u0026O SCI\",\"CatalogNumber\":\"0202    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AOSCI0202\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwMiAgICBBT1NDSTAyMDI=\"}"
             ],
@@ -234,6 +238,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0018  M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AFAMER0018M\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDAxOCAgTSBBRkFNRVIwMDE4TQ==\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AFAMER0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBBRkFNRVIwMDg5SEM=\"}"
+            ],
+            [
                 "M103B - African American Theater History: Minstrel Stage to Rise of American Musical",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0103B M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AFAMER0103BM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDEwM0IgTSBBRkFNRVIwMTAzQk0=\"}"
             ],
@@ -282,6 +290,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0188A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"AFAMER0188A001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OEEgICBBRkFNRVIwMTg4QTAwMQ==\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AFAMER0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBBRkFNRVIwMTg5SEM=\"}"
+            ],
+            [
                 "C191 - Variable Topics Research Seminars: Afro-American Studies: African Americans and Latino Relations in U.S.",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0191  C \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 003  \",\"SequenceNumber\":null,\"Path\":\"AFAMER0191C003\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgQyBBRkFNRVIwMTkxQzAwMw==\"}"
             ],
@@ -292,6 +304,14 @@
             [
                 "C191 - Variable Topics Research Seminars: Afro-American Studies: Intersections of Art, Entertainment, and Law",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0191  C \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"AFAMER0191C001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgQyBBRkFNRVIwMTkxQzAwMQ==\"}"
+            ],
+            [
+                "C191 - Variable Topics Research Seminars: Afro-American Studies: Seminar 4  ",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0191  C \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 004  \",\"SequenceNumber\":null,\"Path\":\"AFAMER0191C004\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgQyBBRkFNRVIwMTkxQzAwNA==\"}"
+            ],
+            [
+                "198 - Honors Research in Afro-American Studies",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AF AMER\",\"CatalogNumber\":\"0198    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"AFAMER0198\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OCAgICBBRkFNRVIwMTk4\"}"
             ],
             [
                 "241 - Special Topics in Afro-American Studies: Internationalism: Paradigms, Debates, and New Directions",
@@ -526,6 +546,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ANTHRO \",\"CatalogNumber\":\"0019    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"ANTHRO0019002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAxOSAgICBBTlRIUk8wMDE5MDAy\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ANTHRO \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ANTHRO0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBBTlRIUk8wMDg5SEM=\"}"
+            ],
+            [
                 "98T - Anthropology of Water: Nature, Culture, and Power",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ANTHRO \",\"CatalogNumber\":\"0098T   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ANTHRO0098T\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA5OFQgICBBTlRIUk8wMDk4VA==\"}"
             ],
@@ -604,6 +628,10 @@
             [
                 "188SB - Individual Studies for USIE Facilitators",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ANTHRO \",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ANTHRO0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBBTlRIUk8wMTg4U0I=\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ANTHRO \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ANTHRO0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBBTlRIUk8wMTg5SEM=\"}"
             ],
             [
                 "191 - Variable Topics Research Seminars: Anthropology: Seminar 1  ",
@@ -1108,6 +1136,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ART HIS\",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ARTHIS0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBBUlRISVMwMTg4U0I=\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ART HIS\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ARTHIS0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBBUlRISVMwMTg5SEM=\"}"
+            ],
+            [
                 "195 - Museum Studies Internship",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ART HIS\",\"CatalogNumber\":\"0195    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ARTHIS0195\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NSAgICBBUlRISVMwMTk1\"}"
             ],
@@ -1304,6 +1336,10 @@
             [
                 "188SB - Individual Studies for USIE Facilitators",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ASIA AM\",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ASIAAM0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBBU0lBQU0wMTg4U0I=\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ASIA AM\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ASIAAM0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBBU0lBQU0wMTg5SEM=\"}"
             ],
             [
                 "191B - Topics in Asian American Themes: Exploring Asian American History through Food",
@@ -2302,8 +2338,16 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CCAS   \",\"CatalogNumber\":\"0188    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"CCAS0188001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OCAgICBDQ0FTMDE4ODAwMQ==\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CCAS   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CCAS0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBDQ0FTMDE4OUhD\"}"
+            ],
+            [
                 "191 - Variable Topics Research Seminars: Chicana/o and Central American Studies: Community Histories and Archives",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CCAS   \",\"CatalogNumber\":\"0191    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"CCAS0191001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgICBDQ0FTMDE5MTAwMQ==\"}"
+            ],
+            [
+                "198A - Honors Research in Chicana/Chicano and Central American Studies: Thesis Conceptualization",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CCAS   \",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CCAS0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBDQ0FTMDE5OEE=\"}"
             ],
             [
                 "198C - Honors Research in Chicana/Chicano and Central American Studies: Writing and Revision",
@@ -2644,6 +2688,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CHEM   \",\"CatalogNumber\":\"0030CL  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CHEM0030CL\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAzMENMICBDSEVNMDAzMENM\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CHEM   \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CHEM0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBDSEVNMDA4OUhD\"}"
+            ],
+            [
                 "98T - Intersection of Science and Ethics: CRISPR, Case Study",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CHEM   \",\"CatalogNumber\":\"0098T   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CHEM0098T\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA5OFQgICBDSEVNMDA5OFQ=\"}"
             ],
@@ -2738,6 +2786,10 @@
             [
                 "184 - Chemical Instrumentation",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CHEM   \",\"CatalogNumber\":\"0184    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CHEM0184\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4NCAgICBDSEVNMDE4NA==\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"CHEM   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"CHEM0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBDSEVNMDE4OUhD\"}"
             ],
             [
                 "192B - Undergraduate Practicum in Chemistry and Biochemistry",
@@ -3296,6 +3348,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COM HLT\",\"CatalogNumber\":\"0187A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMHLT0187A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4N0EgICBDT01ITFQwMTg3QQ==\"}"
             ],
             [
+                "197 - Individual Studies in Community Health Sciences",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COM HLT\",\"CatalogNumber\":\"0197    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMHLT0197\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NyAgICBDT01ITFQwMTk3\"}"
+            ],
+            [
                 "200 - Global Health Problems",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COM HLT\",\"CatalogNumber\":\"0200    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMHLT0200\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwMCAgICBDT01ITFQwMjAw\"}"
             ],
@@ -3436,6 +3492,10 @@
             [
                 "191 - Variable Topics in Comparative Literature: Global Migration: Humanistic Approaches",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COM LIT\",\"CatalogNumber\":\"0191    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"COMLIT0191001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgICBDT01MSVQwMTkxMDAx\"}"
+            ],
+            [
+                "198 - Honors Research in Comparative Literature",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COM LIT\",\"CatalogNumber\":\"0198    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMLIT0198\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OCAgICBDT01MSVQwMTk4\"}"
             ],
             [
                 "200B - Methodology of Comparative Literature",
@@ -3702,6 +3762,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COMM   \",\"CatalogNumber\":\"0089    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"COMM0089001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OSAgICBDT01NMDA4OTAwMQ==\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COMM   \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMM0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBDT01NMDA4OUhD\"}"
+            ],
+            [
                 "100 - Communication Science",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COMM   \",\"CatalogNumber\":\"0100    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMM0100\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDEwMCAgICBDT01NMDEwMA==\"}"
             ],
@@ -3788,6 +3852,10 @@
             [
                 "189 - Advanced Honors Seminars: Seminar 1  ",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COMM   \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"COMM0189001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBDT01NMDE4OTAwMQ==\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"COMM   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"COMM0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBDT01NMDE4OUhD\"}"
             ],
             [
                 "M191DC - CAPPP Washington, DC, Research Seminars",
@@ -4080,6 +4148,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"DESMA  \",\"CatalogNumber\":\"0173    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"DESMA0173001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE3MyAgICBERVNNQTAxNzMwMDE=\"}"
             ],
             [
+                "195B - Community or Corporate Internships in Design | Media Arts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"DESMA  \",\"CatalogNumber\":\"0195B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"DESMA0195B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NUIgICBERVNNQTAxOTVC\"}"
+            ],
+            [
                 "269 - Graduate Seminar",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"DESMA  \",\"CatalogNumber\":\"0269    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"DESMA0269\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI2OSAgICBERVNNQTAyNjk=\"}"
             ],
@@ -4354,19 +4426,19 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0201C   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ECENGR0201C\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwMUMgICBFQ0VOR1IwMjAxQw==\"}"
             ],
             [
-                "209AS - Special Topics in Circuits and Embedded Systems: Artificial Intelligence on Chip",
-                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209AS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209AS001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUFTICBFQ0VOR1IwMjA5QVMwMDE=\"}"
+                "209AS - Special Topics in Circuits and Embedded Systems: AI/ML Foundations for IoT and Human-Cyber-Physical Systems",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209AS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209AS002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUFTICBFQ0VOR1IwMjA5QVMwMDI=\"}"
             ],
             [
-                "209AS - Special Topics in Circuits and Embedded Systems: Lecture 2  ",
-                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209AS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209AS002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUFTICBFQ0VOR1IwMjA5QVMwMDI=\"}"
+                "209AS - Special Topics in Circuits and Embedded Systems: Artificial Intelligence on Chip",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209AS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209AS001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUFTICBFQ0VOR1IwMjA5QVMwMDE=\"}"
             ],
             [
                 "209AS - Special Topics in Circuits and Embedded Systems: Lecture 80  ",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209AS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 080  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209AS080\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUFTICBFQ0VOR1IwMjA5QVMwODA=\"}"
             ],
             [
-                "209BS - Seminar: Circuits and Embedded Systems: ",
+                "209BS - Seminar: Circuits and Embedded Systems: Computer Engineering Graduate Seminar",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EC ENGR\",\"CatalogNumber\":\"0209BS  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ECENGR0209BS001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDIwOUJTICBFQ0VOR1IwMjA5QlMwMDE=\"}"
             ],
             [
@@ -4634,6 +4706,10 @@
             [
                 "189 - Advanced Honors Seminars: Seminar 1  ",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ECON   \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ECON0189001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBFQ09OMDE4OTAwMQ==\"}"
+            ],
+            [
+                "198A - Honors Research in Economics I",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ECON   \",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ECON0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBFQ09OMDE5OEE=\"}"
             ],
             [
                 "198B - Honors Research in Economics II",
@@ -5244,6 +5320,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EE BIOL\",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EEBIOL0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBFRUJJT0wwMTg4U0I=\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EE BIOL\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EEBIOL0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBFRUJJT0wwMTg5SEM=\"}"
+            ],
+            [
                 "191 - Variable Topics Research Seminars: Ecology and Evolutionary Biology: Seminar 1  ",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EE BIOL\",\"CatalogNumber\":\"0191    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"EEBIOL0191001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MSAgICBFRUJJT0wwMTkxMDAx\"}"
             ],
@@ -5270,6 +5350,10 @@
             [
                 "198B - Honors Research in Ecology and Evolutionary Biology",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EE BIOL\",\"CatalogNumber\":\"0198B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EEBIOL0198B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEIgICBFRUJJT0wwMTk4Qg==\"}"
+            ],
+            [
+                "198D - Honors Research in Ecology and Evolutionary Biology",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EE BIOL\",\"CatalogNumber\":\"0198D   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EEBIOL0198D\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEQgICBFRUJJT0wwMTk4RA==\"}"
             ],
             [
                 "200B - Ecology",
@@ -5522,6 +5606,10 @@
             [
                 "87 - Topics in American Cultures: Indigenous Speculative Literature",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ENGL   \",\"CatalogNumber\":\"0087    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ENGL0087001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4NyAgICBFTkdMMDA4NzAwMQ==\"}"
+            ],
+            [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ENGL   \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ENGL0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBFTkdMMDA4OUhD\"}"
             ],
             [
                 "90 - Shakespeare",
@@ -6206,6 +6294,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EPS SCI\",\"CatalogNumber\":\"0016    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EPSSCI0016\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAxNiAgICBFUFNTQ0kwMDE2\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EPS SCI\",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EPSSCI0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBFUFNTQ0kwMDg5SEM=\"}"
+            ],
+            [
                 "103A - Igneous Petrology",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"EPS SCI\",\"CatalogNumber\":\"0103A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"EPSSCI0103A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDEwM0EgICBFUFNTQ0kwMTAzQQ==\"}"
             ],
@@ -6706,6 +6798,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"FILM TV\",\"CatalogNumber\":\"0298A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 003  \",\"SequenceNumber\":null,\"Path\":\"FILMTV0298A003\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5OEEgICBGSUxNVFYwMjk4QTAwMw==\"}"
             ],
             [
+                "298A - Special Studies in Film and Television: Seminar 4  ",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"FILM TV\",\"CatalogNumber\":\"0298A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 004  \",\"SequenceNumber\":null,\"Path\":\"FILMTV0298A004\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5OEEgICBGSUxNVFYwMjk4QTAwNA==\"}"
+            ],
+            [
                 "298A - Special Studies in Film and Television: Seminar 50  ",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"FILM TV\",\"CatalogNumber\":\"0298A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 050  \",\"SequenceNumber\":null,\"Path\":\"FILMTV0298A050\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5OEEgICBGSUxNVFYwMjk4QTA1MA==\"}"
             ],
@@ -6740,6 +6836,10 @@
             [
                 "410E - Production",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"FILM TV\",\"CatalogNumber\":\"0410E   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"FILMTV0410E\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDQxMEUgICBGSUxNVFYwNDEwRQ==\"}"
+            ],
+            [
+                "423A - Direction of Actors for Film and Television",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"FILM TV\",\"CatalogNumber\":\"0423A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"FILMTV0423A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDQyM0EgICBGSUxNVFYwNDIzQQ==\"}"
             ],
             [
                 "434 - Advanced Screenwriting",
@@ -6960,6 +7060,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GENDER \",\"CatalogNumber\":\"0104C M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GENDER0104CM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDEwNEMgTSBHRU5ERVIwMTA0Q00=\"}"
             ],
             [
+                "M126 - Feminist and Queer Theory: Lecture 1  ",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GENDER \",\"CatalogNumber\":\"0126  M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"GENDER0126M001\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDEyNiAgTSBHRU5ERVIwMTI2TTAwMQ==\"}"
+            ],
+            [
                 "CM132A - Chicana Feminism",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GENDER \",\"CatalogNumber\":\"0132A CM\",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GENDER0132ACM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDEzMkEgQ01HRU5ERVIwMTMyQUNN\"}"
             ],
@@ -7072,6 +7176,10 @@
             [
                 "7 - Introduction to Geographic Information Systems",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GEOG   \",\"CatalogNumber\":\"0007    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GEOG0007\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAwNyAgICBHRU9HMDAwNw==\"}"
+            ],
+            [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GEOG   \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GEOG0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBHRU9HMDA4OUhD\"}"
             ],
             [
                 "M102 - Soils and Environment",
@@ -7254,6 +7362,10 @@
             [
                 "173 - Advanced Study of Modern Literature",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GERMAN \",\"CatalogNumber\":\"0173    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GERMAN0173\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE3MyAgICBHRVJNQU4wMTcz\"}"
+            ],
+            [
+                "197 - Individual Studies in German",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GERMAN \",\"CatalogNumber\":\"0197    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GERMAN0197\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NyAgICBHRVJNQU4wMTk3\"}"
             ],
             [
                 "263 - Seminar: Literary Theory: Seminar 1  ",
@@ -7776,6 +7888,10 @@
             [
                 "188SB - Individual Studies for USIE Facilitators",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"HIST   \",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"HIST0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBISVNUMDE4OFNC\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"HIST   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"HIST0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBISVNUMDE4OUhD\"}"
             ],
             [
                 "191A - Capstone Seminar: History--Ancient History: Roman Law",
@@ -8894,6 +9010,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LBR STD\",\"CatalogNumber\":\"0188    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"LBRSTD0188001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OCAgICBMQlJTVEQwMTg4MDAx\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LBR STD\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"LBRSTD0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBMQlJTVEQwMTg5SEM=\"}"
+            ],
+            [
                 "191B - Labor Studies: Research in Action",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LBR STD\",\"CatalogNumber\":\"0191B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"LBRSTD0191B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MUIgICBMQlJTVEQwMTkxQg==\"}"
             ],
@@ -9096,6 +9216,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LING   \",\"CatalogNumber\":\"0185A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"LING0185A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4NUEgICBMSU5HMDE4NUE=\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LING   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"LING0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBMSU5HMDE4OUhD\"}"
+            ],
+            [
                 "194 - Research Group Seminars: Laboratory Research in Linguistics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"LING   \",\"CatalogNumber\":\"0194    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"LING0194\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NCAgICBMSU5HMDE5NA==\"}"
             ],
@@ -9244,6 +9368,10 @@
             [
                 "M178 - Variable Topics: Bible and Beyond: Afterlife of Biblical Stories",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"M E STD\",\"CatalogNumber\":\"0178  M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"MESTD0178M001\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDE3OCAgTSBNRVNURDAxNzhNMDAx\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"M E STD\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MESTD0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBNRVNURDAxODlIQw==\"}"
             ]
         ],
         "M PHARM": [
@@ -9608,6 +9736,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH   \",\"CatalogNumber\":\"0182    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MATH0182\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4MiAgICBNQVRIMDE4Mg==\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MATH0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBNQVRIMDE4OUhD\"}"
+            ],
+            [
                 "M192A - Introduction to Collaborative Learning Theory and Practice",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH   \",\"CatalogNumber\":\"0192A M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MATH0192AM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDE5MkEgTSBNQVRIMDE5MkFN\"}"
             ],
@@ -9906,6 +10038,10 @@
             [
                 "198B - Honors Research in Molecular, Cell, and Developmental Biology",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MCD BIO\",\"CatalogNumber\":\"0198B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MCDBIO0198B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEIgICBNQ0RCSU8wMTk4Qg==\"}"
+            ],
+            [
+                "198D - Honors Research in Molecular, Cell, and Developmental Biology",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MCD BIO\",\"CatalogNumber\":\"0198D   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MCDBIO0198D\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEQgICBNQ0RCSU8wMTk4RA==\"}"
             ],
             [
                 "199A - Directed Research in Molecular, Cell, and Developmental Biology",
@@ -10722,6 +10858,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MIMG   \",\"CatalogNumber\":\"0185A C \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MIMG0185AC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4NUEgQyBNSU1HMDE4NUFD\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MIMG   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MIMG0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBNSU1HMDE4OUhD\"}"
+            ],
+            [
                 "191H - Honors Research Seminars: Microbiology, Immunology, and Molecular Genetics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MIMG   \",\"CatalogNumber\":\"0191H   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MIMG0191H\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MUggICBNSU1HMDE5MUg=\"}"
             ],
@@ -10740,6 +10880,10 @@
             [
                 "198A - Honors Research in Microbiology, Immunology, and Molecular Genetics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MIMG   \",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MIMG0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBNSU1HMDE5OEE=\"}"
+            ],
+            [
+                "198B - Honors Research in Microbiology, Immunology, and Molecular Genetics",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"MIMG   \",\"CatalogNumber\":\"0198B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"MIMG0198B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEIgICBNSU1HMDE5OEI=\"}"
             ],
             [
                 "198C - Honors Research in Microbiology, Immunology, and Molecular Genetics",
@@ -11931,6 +12075,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"NURSING\",\"CatalogNumber\":\"0264    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"NURSING0264\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI2NCAgICBOVVJTSU5HMDI2NA==\"}"
             ],
             [
+                "288 - Variable Topics in Nursing",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"NURSING\",\"CatalogNumber\":\"0288    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"NURSING0288\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI4OCAgICBOVVJTSU5HMDI4OA==\"}"
+            ],
+            [
                 "295B - Grant Writing II:  Scientific Proposal Development",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"NURSING\",\"CatalogNumber\":\"0295B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"NURSING0295B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5NUIgICBOVVJTSU5HMDI5NUI=\"}"
             ],
@@ -12212,6 +12360,14 @@
             [
                 "177B - Historical Studies in Existentialism: Guilt and Self-Cruelty: Nietzsche's Naturalistic Account of Morality and Soul",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHILOS \",\"CatalogNumber\":\"0177B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"PHILOS0177B002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE3N0IgICBQSElMT1MwMTc3QjAwMg==\"}"
+            ],
+            [
+                "189 - Advanced Honors Seminars: Advanced Honors Seminar for Philosophy 100B",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHILOS \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"PHILOS0189001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBQSElMT1MwMTg5MDAx\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHILOS \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"PHILOS0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBQSElMT1MwMTg5SEM=\"}"
             ],
             [
                 "191 - Variable Topics Research Seminars: Philosophy: What is Race? What is Sex?",
@@ -12530,6 +12686,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHYSICS\",\"CatalogNumber\":\"0192S M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"PHYSICS0192SM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDE5MlMgTSBQSFlTSUNTMDE5MlNN\"}"
             ],
             [
+                "196 - Research Apprenticeship in Physics",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHYSICS\",\"CatalogNumber\":\"0196    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"PHYSICS0196\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NiAgICBQSFlTSUNTMDE5Ng==\"}"
+            ],
+            [
                 "198 - Honors Research in Physics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PHYSICS\",\"CatalogNumber\":\"0198    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"PHYSICS0198\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OCAgICBQSFlTSUNTMDE5OA==\"}"
             ],
@@ -12778,6 +12938,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"POL SCI\",\"CatalogNumber\":\"0188SB  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"POLSCI0188SB\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OFNCICBQT0xTQ0kwMTg4U0I=\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"POL SCI\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"POLSCI0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBQT0xTQ0kwMTg5SEM=\"}"
+            ],
+            [
                 "191A - Variable Topics Research Seminars for Majors: Political Theory: Pandemic: Collision of Science, Politics, and Ethics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"POL SCI\",\"CatalogNumber\":\"0191A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"POLSCI0191A002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MUEgICBQT0xTQ0kwMTkxQTAwMg==\"}"
             ],
@@ -12924,6 +13088,10 @@
             [
                 "142B - Brazil and Portugal in Comparative Perspective: Transatlantic Mind: Postcolonial Brazil and Portugal",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PORTGSE\",\"CatalogNumber\":\"0142B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"PORTGSE0142B001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE0MkIgICBQT1JUR1NFMDE0MkIwMDE=\"}"
+            ],
+            [
+                "198A - Senior Honors Research in Portuguese I",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PORTGSE\",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"PORTGSE0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBQT1JUR1NFMDE5OEE=\"}"
             ],
             [
                 "M201A - Literary Theory and Criticism",
@@ -13166,6 +13334,10 @@
             [
                 "189 - Advanced Honors Seminars: Advanced Honors Seminar for Psychology 133A",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PSYCH  \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"PSYCH0189002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBQU1lDSDAxODkwMDI=\"}"
+            ],
+            [
+                "189 - Advanced Honors Seminars: Advanced Honors Seminar for Psychology 137A",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"PSYCH  \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 003  \",\"SequenceNumber\":null,\"Path\":\"PSYCH0189003\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBQU1lDSDAxODkwMDM=\"}"
             ],
             [
                 "189 - Advanced Honors Seminars: Advanced Honors Seminar for Psychology 188B",
@@ -13718,6 +13890,10 @@
             [
                 "152 - Survey of Romanian Literature",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ROMANIA\",\"CatalogNumber\":\"0152    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ROMANIA0152\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE1MiAgICBST01BTklBMDE1Mg==\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ROMANIA\",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ROMANIA0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBST01BTklBMDE4OUhD\"}"
             ]
         ],
         "RUSSN": [
@@ -13820,6 +13996,10 @@
             [
                 "50W - Introduction to Scandinavian Literatures and Cultures",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SCAND  \",\"CatalogNumber\":\"0050W   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SCAND0050W\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA1MFcgICBTQ0FORDAwNTBX\"}"
+            ],
+            [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SCAND  \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SCAND0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBTQ0FORDAwODlIQw==\"}"
             ],
             [
                 "138 - Vikings",
@@ -14040,6 +14220,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOC THT\",\"CatalogNumber\":\"0190B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCTHT0190B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MEIgICBTT0NUSFQwMTkwQg==\"}"
             ],
             [
+                "199A - Directed Research or Senior Thesis in Social Thought I",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOC THT\",\"CatalogNumber\":\"0199A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCTHT0199A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OUEgICBTT0NUSFQwMTk5QQ==\"}"
+            ],
+            [
                 "199B - Directed Research or Senior Thesis in Social Thought II",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOC THT\",\"CatalogNumber\":\"0199B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCTHT0199B\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OUIgICBTT0NUSFQwMTk5Qg==\"}"
             ]
@@ -14228,6 +14412,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOCIOL \",\"CatalogNumber\":\"0089    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 003  \",\"SequenceNumber\":null,\"Path\":\"SOCIOL0089003\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OSAgICBTT0NJT0wwMDg5MDAz\"}"
             ],
             [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOCIOL \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCIOL0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBTT0NJT0wwMDg5SEM=\"}"
+            ],
+            [
                 "101 - Development of Sociological Theory",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOCIOL \",\"CatalogNumber\":\"0101    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCIOL0101\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDEwMSAgICBTT0NJT0wwMTAx\"}"
             ],
@@ -14310,6 +14498,10 @@
             [
                 "189 - Advanced Honors Seminars: Advanced Honors Seminar for Sociology 180A",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOCIOL \",\"CatalogNumber\":\"0189    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 004  \",\"SequenceNumber\":null,\"Path\":\"SOCIOL0189004\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OSAgICBTT0NJT0wwMTg5MDA0\"}"
+            ],
+            [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SOCIOL \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SOCIOL0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBTT0NJT0wwMTg5SEM=\"}"
             ],
             [
                 "191D - Undergraduate Seminar: Sociology of Development",
@@ -14550,6 +14742,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SPAN   \",\"CatalogNumber\":\"0172XPM \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SPAN0172XPM\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDE3MlhQTSBTUEFOMDE3MlhQTQ==\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SPAN   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"SPAN0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBTUEFOMDE4OUhD\"}"
+            ],
+            [
                 "191B - Variable Topics in Spanish: Studies in Hispanic Culture and Civilization: Corporeal Image: Experimental Workshop in Audiovisual Communication",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"SPAN   \",\"CatalogNumber\":\"0191B   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"SPAN0191B001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5MUIgICBTUEFOMDE5MUIwMDE=\"}"
             ],
@@ -14644,6 +14840,10 @@
             [
                 "20 - Introduction to Statistical Programming with R",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"STATS  \",\"CatalogNumber\":\"0020    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"STATS0020\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAyMCAgICBTVEFUUzAwMjA=\"}"
+            ],
+            [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"STATS  \",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"STATS0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBTVEFUUzAwODlIQw==\"}"
             ],
             [
                 "100A - Introduction to Probability",
@@ -14991,6 +15191,10 @@
             [
                 "150 - Theater Production and Performance: Introduction to Theatrical Properties Management and Fabrication",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"THEATER\",\"CatalogNumber\":\"0150    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"THEATER0150002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE1MCAgICBUSEVBVEVSMDE1MDAwMg==\"}"
+            ],
+            [
+                "150 - Theater Production and Performance: Laboratory 9  ",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"THEATER\",\"CatalogNumber\":\"0150    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 009  \",\"SequenceNumber\":null,\"Path\":\"THEATER0150009\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE1MCAgICBUSEVBVEVSMDE1MDAwOQ==\"}"
             ],
             [
                 "150 - Theater Production and Performance: Technical Theater Overview",
@@ -15367,6 +15571,10 @@
             [
                 "297 - Current Issues in Urban Planning: New Directions in Regional and International Development",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"URBN PL\",\"CatalogNumber\":\"0297    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"URBNPL0297001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5NyAgICBVUkJOUEwwMjk3MDAx\"}"
+            ],
+            [
+                "297 - Current Issues in Urban Planning: Seminar 2  ",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"URBN PL\",\"CatalogNumber\":\"0297    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 002  \",\"SequenceNumber\":null,\"Path\":\"URBNPL0297002\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDI5NyAgICBVUkJOUEwwMjk3MDAy\"}"
             ],
             [
                 "375 - Teaching Apprentice Practicum",
