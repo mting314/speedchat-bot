@@ -639,25 +639,24 @@ class UCLA(commands.Cog):
 
             need_change = False
 
-
             for my_class in json_object:
                 params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
                 enrollment_data = soup.select_one("div[id$=-status_data]").text
 
-                await self.bot.get_user(user_id).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                await self.bot.get_user(int(user_id)).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                 #  Current status  changed from   previously recorded status
                 if enrollment_data      !=        my_class["enrollment_data"]:
-                    await (
+                    await self.bot.get_user(int(user_id)).send(
                         f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                     my_class['enrollment_data'] = enrollment_data
                     need_change = True
 
             if need_change:
-                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
+                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "w")
                 json.dump(json_object, a_file)
                 a_file.close()
 
