@@ -108,6 +108,9 @@ class UCLA(commands.Cog):
         self.term = "21W"
         self.data_dir = f"speedchat_bot/ucla_data/{self.term}"
         self._reload_classes()
+
+        self.users_list = []
+
         
     
     def _search_for_class_model(self, subject, catalog):
@@ -131,13 +134,13 @@ class UCLA(commands.Cog):
 
 
 
-    def _generate_embed(self, parsed_class, letter_choice=None):
+    def _generate_embed(self, parsed_class, letter_choice=None, watched=False):
         """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
         title = '{choice} {class_name}'.format(choice=f"(Choice {letter_choice})" if letter_choice else '',
                                                class_name=parsed_class["class_name"])
 
         embedVar = discord.Embed(title=title, description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})',
-                                 color=0x00ff00)
+                                 color=0x00ff00 if not watched else 0xff0000)
         embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
         embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
         embedVar.add_field(name="Days", value=parsed_class["days"], inline=True)
@@ -362,6 +365,11 @@ class UCLA(commands.Cog):
         return {k: v.replace("\r", '').replace("\n", '').strip() if type(v) == "str" else v for k, v in
                 class_dict.items()}
 
+    def _is_watching(user_id, class_id):
+        """Check's if a user is tracking a certain class's id"""
+        
+
+
     async def _generate_class_view(self, ctx, subject: str, catalog: str, mode="slow", display_description=False, choices=False):
         """
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
@@ -373,8 +381,6 @@ class UCLA(commands.Cog):
         for name_model_pair in model_choices:
             print(name_model_pair[1])
             htmls = htmls + self.check_class(name_model_pair)
-
-        # htmls = [chr(i+65): htmls[i] for i in range(len(htmls))}
 
         # I can't decide how this ought to be designed (idk anything about UX), but this is how it's gonna work:
         # there are two modes: slow and fast
@@ -409,9 +415,35 @@ class UCLA(commands.Cog):
                     parsed_class['description'] = \
                         soup.find("p", class_="class_detail_title", text="Course Description").findNext('p').contents[0]
 
-                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None))
+                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching()))
 
         return htmls
+
+    async def _present_choices(self, ctx, num_choices):
+        """Given a (int) number of choices, send a message asking to choose one, with reactions for easy selecting"""
+        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(num_choices)]
+
+        while True:
+            status = await ctx.send(f"Choose the class you want keep an eye on/remove from your watchlist.")
+            for emoji_choice in emoji_choices:
+                await status.add_reaction(emoji_choice)
+            await status.add_reaction(NO_EMOJI)
+
+            try:
+                r, _ = await self.bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author)
+            except asyncio.TimeoutError:
+                return
+            else:
+                if r.emoji == NO_EMOJI:
+                    await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
+                    return None
+                if r.emoji in emoji_choices:
+                    await status.edit(content=f"You've selected choice {r.emoji}")
+                    # The index of our choice will correspond with how "far" out emoji
+                    # choice was past number that corresponds with the A emoji
+                    choice_index = ord(r.emoji) - A_EMOJI_INT
+                    return choice_index
+
 
     @commands.command(help="Search for a class in preparation to add to watch list")
     async def search_class(self, ctx, *, args):
@@ -432,38 +464,18 @@ class UCLA(commands.Cog):
 
         subject = ' '.join(arg_list)
 
-
+        # fetch list of class HTMLS
         htmls = await self._generate_class_view(ctx, subject, catalog, mode, choices=True)
 
+        # check if we actually found any
         if len(htmls) == 0:
             await ctx.send(f"Couldn't find that class.")
             return
 
-        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(htmls))]
-
-        while True:
-            status = await ctx.send(f"Choose the class you want keep an eye on.")
-            for emoji_choice in emoji_choices:
-                await status.add_reaction(emoji_choice)
-            await status.add_reaction(NO_EMOJI)
-
-            try:
-                r, _ = await self.bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author)
-            except asyncio.TimeoutError:
-                return
-            else:
-                if r.emoji == NO_EMOJI:
-                    await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
-                    return
-                if r.emoji in emoji_choices:
-                    await status.edit(content=f"You've selected choice {r.emoji}")
-                    # The index of our choice will correspond with how "far" out emoji
-                    # choice was past number that corresponds with the A emoji
-                    choice_index = ord(r.emoji) - A_EMOJI_INT
-                    break
-
+        # Ask the user which one they want to select
+        choice_index = await self._present_choices(ctx, len(htmls))
+        # And add that selection to their watchlist
         if choice_index is not None:
-            # based on the emoji index, choose the corresponding entry of the htmls
             name_soup_pair = htmls[choice_index]
             # read
             try:
@@ -474,11 +486,6 @@ class UCLA(commands.Cog):
                 json_object = []
 
             class_id = parse_class_id(str(name_soup_pair[1]))
-
-
-            # initialize user's list of watched classes if no entries yet
-            # if user_id not in json_object["classes"]:
-            #     json_object["classes"][user_id] = []
 
 
             # check for duplicates
@@ -513,28 +520,7 @@ class UCLA(commands.Cog):
         if json_object is None:
             return
 
-        emoji_choices = [chr(A_EMOJI_INT + n) for n in range(len(json_object))]
-
-        while True:
-            status = await ctx.send(f"Choose the class you want keep an eye on.")
-            for emoji_choice in emoji_choices:
-                await status.add_reaction(emoji_choice)
-            await status.add_reaction(NO_EMOJI)
-
-            try:
-                r, _ = await self.bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author)
-            except asyncio.TimeoutError:
-                return
-            else:
-                if r.emoji == NO_EMOJI:
-                    await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
-                    return
-                if r.emoji in emoji_choices:
-                    await status.edit(content=f"You've selected choice {r.emoji}")
-                    # The index of our choice will correspond with how "far" out emoji
-                    # choice was past number that corresponds with the A emoji
-                    choice_index = ord(r.emoji) - A_EMOJI_INT
-                    break
+        choice_index = await self._present_choices(ctx, len(json_object))
 
         if choice_index is not None:
             # based on the emoji index, choose the corresponding entry of the htmls
@@ -603,11 +589,6 @@ class UCLA(commands.Cog):
         return json_object
 
 
-    # @commands.command()
-    # async def DM(self, ctx, user: discord.User, *, message=None):
-    #     message = message or "This Message is sent via DM"
-    #     await user.send(message)
-
     @commands.command(help='Clear classes a user\'s "to watch" list')
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
@@ -615,10 +596,10 @@ class UCLA(commands.Cog):
         if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
             os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
 
-        await ctx.send("Classes cleared.")
+        await ctx.send(f"Classes cleared for {ctx.message.author.name}.")
 
     @tasks.loop(seconds=15.0)
-    async def check_for_change(self, ctx):
+    async def check_for_change(self):
         """
         Loop that when activated, every 15 seconds checks if a class's status has changed.
         If a class's status has changed,
@@ -626,7 +607,7 @@ class UCLA(commands.Cog):
         """
 
         # iterate through all the files in the watchlist directory
-        for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
+        for user_watchlist in self.users_list:
             try:
                 a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
                 json_object = json.load(a_file)
@@ -662,16 +643,23 @@ class UCLA(commands.Cog):
 
         print(self.check_for_change.current_loop)
 
+    
+
     @check_for_change.after_loop
     async def after_slow_count(self, ctx):
         await ctx.send("Stopped checking for classes")
 
-    @commands.command(help="Start the count")
+    @commands.command(help="I start the count")
     async def start_the_count(self, ctx):
-        self.check_for_change.start(ctx)
+        self.check_for_change.start()
         await self.bot.change_presence(status=discord.Status.online, activity=discord.CustomActivity("Updating"))
+
+    @commands.command(help="Join the count")
+    async def count_me_in(self, ctx):
+        self.users_list.append(ctx.message.author.id)
+        
 
     @commands.command(help="Stop the count")
     async def stop_the_count(self, ctx):
-        self.check_for_change.stop(ctx)
+        self.check_for_change.stop()
         await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.CustomActivity("Not updating"))
