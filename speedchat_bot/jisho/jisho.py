@@ -322,7 +322,10 @@ def parsePhrasePageData(pageHtml, query):
 
 
 class Jisho:
-    """A class to interface with Jisho.org and store search results for use.
+    """
+    A class to interface with Jisho.org and store search results for use.
+    Stores html results from queries to Jisho.org as an instance variable
+    and 
 
     """
 
@@ -342,23 +345,15 @@ class Jisho:
         return self.parse_kanji_page_data(kanji, depth)
 
     def searchForExamples(self, phrase):
+        """Return """
         uri = uriForSearch(phrase, filter="sentences")
         self._extract_html(uri)
         return parse_example_page_data(self.html, phrase)
 
     def scrapeForPhrase(self, phrase):
         uri = uri_for_phrase_scrape(phrase)
-        try:
-            response = requests.get(uri)
-            return parsePhrasePageData(response.content, phrase)
-        except Exception as err:
-            # if err.response.status == 404:
-            #     return {
-            #         'query': phrase,
-            #         'found': False,
-            #     }
-
-            raise err
+        response = requests.get(uri)
+        return parsePhrasePageData(response.content, phrase)
 
 
     def contains_kanji_glyph(self, kanji):
@@ -366,28 +361,28 @@ class Jisho:
         return kanjiGlyphToken in str(self.html)
 
 
-    def getIntBetweenStrings(self, start_string, end_string):
+    def _get_int_between_strings(self, start_string, end_string):
         string_between_strings = get_string_between_strings(self.html, start_string, end_string)
         return int(string_between_strings) if string_between_strings else None
 
-    def getNewspaperFrequencyRank(self):
+    def _get_newspaper_frequency_rank(self):
         frequency_section = get_string_between_strings(self.html, '<div class="frequency">', '</div>')
         return get_string_between_strings(frequency_section, '<strong>', '</strong>') if frequency_section else None
 
-    def get_yomi(self, page_html, yomiLocatorSymbol):
+    def _get_yomi(self, page_html, yomiLocatorSymbol):
         yomi_section = get_string_between_strings(self.html, f'<dt>{yomiLocatorSymbol}:</dt>', '</dl>')
         return parseAnchorsToArray(yomi_section) or ''
 
 
     def get_kunyomi(self):
-        return self.get_yomi(self.html, KUNYOMI_LOCATOR_SYMBOL)
+        return self._get_yomi(self.html, KUNYOMI_LOCATOR_SYMBOL)
 
 
     def get_onyomi(self):
-        return self.get_yomi(self.html, ONYOMI_LOCATOR_SYMBOL)
+        return self._get_yomi(self.html, ONYOMI_LOCATOR_SYMBOL)
 
 
-    def get_yomi_examples(self, yomiLocatorSymbol):
+    def _get_yomi_examples(self, yomiLocatorSymbol):
         locator_string = f'<h2>{yomiLocatorSymbol} reading compounds</h2>'
         example_section = get_string_between_strings(self.html, locator_string, '</ul>')
         if not example_section:
@@ -407,11 +402,11 @@ class Jisho:
 
 
     def get_onyomi_examples(self):
-        return self.get_yomi_examples(ONYOMI_LOCATOR_SYMBOL)
+        return self._get_yomi_examples(ONYOMI_LOCATOR_SYMBOL)
 
 
     def get_kunyomi_examples(self):
-        return self.get_yomi_examples(KUNYOMI_LOCATOR_SYMBOL)
+        return self._get_yomi_examples(KUNYOMI_LOCATOR_SYMBOL)
 
 
     def get_radical(self):
@@ -466,8 +461,8 @@ class Jisho:
 
         result['taughtIn'] = get_string_between_strings(self.html, 'taught in <strong>', '</strong>')
         result['jlptLevel'] = get_string_between_strings(self.html, 'JLPT level <strong>', '</strong>')
-        result['newspaperFrequencyRank'] = self.getNewspaperFrequencyRank()
-        result['strokeCount'] = self.getIntBetweenStrings('<strong>', '</strong> strokes')
+        result['newspaperFrequencyRank'] = self._get_newspaper_frequency_rank()
+        result['strokeCount'] = self._get_int_between_strings('<strong>', '</strong> strokes')
 
         result['meaning'] = html.unescape(
             get_string_between_strings(self.html, '<div class="kanji-details__main-meanings">', '</div>')).strip().replace("\n", '')
