@@ -7,6 +7,7 @@ import requests
 import re
 from bs4 import BeautifulSoup
 import os
+import argparse
 
 import asyncio
 from pyppeteer import launch
@@ -73,6 +74,22 @@ def parse_class_id(html):
     match = re.search(id_regex, str(html))
     return match[1] if match else None
 
+def parse_term(html):
+    """
+    Given html from GetCourseSummary endpoint, extract the term.
+    """
+    term_regex = 'term_cd=([\d]{2}[FWS]{1})&'
+    match = re.search(term_regex, str(html))
+    return match[1] if match else None
+
+
+def validate_term(my_string):
+    template = re.compile('[\d]{2}[FWS]{1}')  # i.e. 20F
+    if template.match(my_string) is None:
+        return False
+    else:
+        return True
+
 
 # Commands for looking up UCLA classes
 class UCLA(commands.Cog):
@@ -100,20 +117,35 @@ class UCLA(commands.Cog):
             "waitlistClosed": re.compile('Waitlist Full \((?P<WaitlistCapacity>\d+)\)'),
         }
 
+        self.status_colors = {
+            "tenative"    : 0xff0000,
+            "cancelled"   : 0xff0000,
+            "closedByDept": 0xff0000,
+            "classFull"   : 0xff0000,
+            "classOpen"   : 0x00ff00,
+            "waitlistOnly": 0x00ff00,
+            "waitlistFull": 0xff0000,
+        }
+
         # The main urls we'll be scraping from
         self.PUBLIC_RESULTS_URL     = "https://sa.ucla.edu/ro/Public/SOC/Results"
         self.GET_COURSE_SUMMARY_URL = "https://sa.ucla.edu/ro/Public/SOC/Results/GetCourseSummary"
         self.COURSE_TITLES_VIEW     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
 
-        self.term = "21W"
-        self.data_dir = f"speedchat_bot/ucla_data/{self.term}"
+        self.default_term = "21W"
+        self.data_dir = "speedchat_bot/ucla_data/{term}"
         self._reload_classes()
 
-        self.users_list = []
+        self.daily_reload.start()
+
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument('class_name', metavar='name', type=str, nargs='+',help='an integer for the accumulator')
+        self.parser.add_argument('--mode', dest='mode', default="fast")
+        self.parser.add_argument('--term', dest='term', default=self.default_term)
 
         
     
-    def _search_for_class_model(self, subject, catalog):
+    def _search_for_class_model(self, subject, catalog, term=None):
         """
         Finds the model for each class that matches subject+catalog, and also attaches the "human readable" class name.
 
@@ -124,23 +156,31 @@ class UCLA(commands.Cog):
         e.g. (Mathematics (MATH) 19 - COVID-19: Patterns and Predictions in Art, {\"Term\":\"21W\",\"SubjectAreaCode\":\"MATH...)
         
         """
-        with open(self.data_dir + "/class_names.json") as fp:
+
+        class_list = []
+
+        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
+            self._reload_classes(term=term or self.default_term)
+
+        with open(self.data_dir.format(term=term or self.default_term) + "/class_names.json") as fp:
             # TODO: Maybe separate subjects into their own json?
             data = json.load(fp)['class_names']
             classes_in_subject = data[subject]
             for my_class in classes_in_subject:
                 if my_class[0].split()[0] == str(catalog):
-                    yield f"{subject} {my_class[0]}", my_class[1]
+                    class_list.append((f"{subject} {my_class[0]}", my_class[1]))
+        
+        return class_list
 
 
 
     def _generate_embed(self, parsed_class, letter_choice=None, watched=False):
         """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
-        title = '{choice} {class_name}'.format(choice=f"(Choice {letter_choice})" if letter_choice else '',
-                                               class_name=parsed_class["class_name"])
+        title = '{choice} {class_name}{in_list}'.format(choice=f"(Choice {letter_choice})" if letter_choice else '',
+                                               class_name=parsed_class["class_name"], in_list=" (in your watchlist)" if watched else '')
 
         embedVar = discord.Embed(title=title, description=f'[{parsed_class["section_name"]}]({parsed_class["url"]})',
-                                 color=0x00ff00 if not watched else 0xff0000)
+                                 color=self.status_colors[parsed_class["enrollment_status"]])
         embedVar.add_field(name="Term", value=parsed_class["term"], inline=True)
         embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
         embedVar.add_field(name="Days", value=parsed_class["days"], inline=True)
@@ -167,7 +207,7 @@ class UCLA(commands.Cog):
         if os.path.exists("candidate.png"):
             os.remove("candidate.png")
 
-        params = {'t': self.term, 'sBy': 'classidnumber', 'id': class_id}
+        params = {'t': self.default_term, 'sBy': 'classidnumber', 'id': class_id}
         final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
 
         page = await browser.newPage()
@@ -190,55 +230,77 @@ class UCLA(commands.Cog):
             os.remove("candidate.png")
 
     @commands.command(help="Switch to a new term for searching (i.e. to 20F)")
+    @is_admin()
     async def switch_term(self, ctx, new_term: str):
         # First, is this the right format?
-        template = re.compile('[\d]{2}[FWS]{1}')  # i.e. 20F
-        if template.match(new_term) is None:
+        new_term = validate_term(new_term)
+        if not new_term:
             ctx.channel.send(f"Sorry, {new_term} looks like a malformed term.")
             return
 
-        if self.term and self.term is new_term:
-            ctx.channel.send(f"You're already on {self.term}!")
+        if self.default_term and self.default_term is new_term:
+            ctx.channel.send(f"You're already on {self.default_term}!")
             return
 
         # If we pass the checks, actually switch term, and initialize class list
-        self.term = new_term
+        self.default_term = new_term
         self._reload_classes()
 
     @commands.command(help="Search for a class in preparation to add to watch list")    
-    async def reload_classes(self, ctx):
-        self._reload_classes()
+    async def reload_classes(self, ctx, term=None):
+        self._reload_classes(ctx, term)
+
+
+    def get_subjects_for_term(self, term):
+        print(f"getting subjects json for {term}")
+        r = requests.get(f"https://sa.ucla.edu/ro/Public/SOC/Results?t={term}&sBy=subject&subj=MATH")
+        template = re.compile("SearchPanelSetup\('(.*?)'")
+        soup  = BeautifulSoup(r.content, "lxml")
+        for script in soup.select("script"):
+            matches = template.search(str(script))
+            if matches:
+                subjects = matches[1].replace("&quot;", '"')
+                if term:
+                    os.mkdir(self.data_dir.format(term=term))
+
+                subjects_file = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json", "w+")
+                subjects_file.write(subjects)
+                subjects_file.close()
 
 
 
-    def _reload_classes(self):
+
+    async def send_message(self, ctx, message):
+        await ctx.send(message)
+
+
+    def _reload_classes(self, ctx=None, term=None):
         # Load list of subjects parsed from UCLA website
         # TODO: programatically get subjects.json
-        f = open(self.data_dir + "/subjects.json")
+        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/subjects.json"):
+            self.get_subjects_for_term(term)
+
+        f = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json")
         self.subjectsJSON = json.load(f)
         f.close()
 
-
-        if os.path.exists(self.data_dir + "/class_names.json"):
-            with open(self.data_dir + "/class_names.json") as fp:
-                data = json.load(fp)
-                if data["term"] == self.term:  # no need to update json
-                    return
-
         class_name_dict = {}
-        for subject in self.subjectsJSON:
+
+        if ctx:
+            # await ctx.send(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
+            self.send_message(ctx, "sfasf")
+        print(f"Reloading the {term} class names JSON (this may take a minute or 2)...")
+        for n, subject in enumerate(self.subjectsJSON):
             pageNumber = 1
+
             # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
-            model = {"subj_area_cd":subject["value"],"search_by":"subject","term_cd":self.term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
+            model = {"subj_area_cd":subject["value"],"search_by":"subject","term_cd":term or self.default_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
             all_classes = []
             while True:
                 params = {'search_by': 'subject', 'model': model, "pageNumber":pageNumber, 'FilterFlags': filter_flags, '_': '1571869764769'}
 
                 url = _generate_url(self.COURSE_TITLES_VIEW, params)
 
-                # old_url = f'https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView?search_by=subject&model=%7B%22subj_area_cd%22%3A%22{subject_name}%22%2C%22search_by%22%3A%22Subject%22%2C%22term_cd%22%3A%22{self.term}%22%2C%22SubjectAreaName%22%3A%22Mathematics+(MATH)%22%2C%22CrsCatlgName%22%3A%22Enter+a+Catalog+Number+or+Class+Title+(Optional)%22%2C%22ActiveEnrollmentFlag%22%3A%22n%22%2C%22HasData%22%3A%22True%22%7D&pageNumber={pageNumber}&filterFlags=%7B%22enrollment_status%22%3A%22O%2CW%2CC%2CX%2CT%2CS%22%2C%22advanced%22%3A%22y%22%2C%22meet_days%22%3A%22M%2CT%2CW%2CR%2CF%22%2C%22start_time%22%3A%228%3A00+am%22%2C%22end_time%22%3A%227%3A00+pm%22%2C%22meet_locations%22%3Anull%2C%22meet_units%22%3Anull%2C%22instructor%22%3Anull%2C%22class_career%22%3Anull%2C%22impacted%22%3Anull%2C%22enrollment_restrictions%22%3Anull%2C%22enforced_requisites%22%3Anull%2C%22individual_studies%22%3Anull%2C%22summer_session%22%3Anull%7D'
-
-                # print(url)
                 r = requests.get(url, headers=HEADERS)
                 soup = BeautifulSoup(r.content, "lxml")
                 div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
@@ -255,13 +317,16 @@ class UCLA(commands.Cog):
                 pageNumber += 1
 
             class_name_dict[subject["value"]] = all_classes
-            print("loaded", subject["label"])
 
-        class_names_file = open(self.data_dir + "/class_names.json", "w")
+        if ctx:
+            self.send_message(ctx, "sfasf")
+            # await ctx.send(f"Done reloading")
+        print("Done reloading")
+
+        class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
         class_names_file.write(
-            json.dumps({"term": self.term, "class_names": class_name_dict}, indent=4, sort_keys=True))
+            json.dumps({"term": term or self.default_term, "class_names": class_name_dict}, indent=4, sort_keys=True))
         class_names_file.close()
-        print("done")
 
     def _parse_enrollment_status(self, my_string):
         """Go through the dictionary of enrollment regexes, return an enrollment dictionary when the right match is
@@ -316,7 +381,7 @@ class UCLA(commands.Cog):
                         waitlist_dict["waitlist_count"] = waitlist_dict["waitlist_capacity"]
                     return waitlist_dict
 
-    def _parse_class(self, name_soup_pair, term=None):
+    def _parse_class(self, name_soup_pair):
         if type(name_soup_pair) is tuple:
             name = name_soup_pair[0]
             soup = name_soup_pair[1]
@@ -343,7 +408,7 @@ class UCLA(commands.Cog):
             "class_no": details_url_parts['class_no'].strip(),
             "class_id": parse_class_id(str(soup)),
             "class_name": name,
-            "term": term or self.term,
+            "term": parse_term(str(soup)),
             "section_name": section_name,
             "days": days,
             "times": times,
@@ -365,17 +430,41 @@ class UCLA(commands.Cog):
         return {k: v.replace("\r", '').replace("\n", '').strip() if type(v) == "str" else v for k, v in
                 class_dict.items()}
 
-    def _is_watching(user_id, class_id):
-        """Check's if a user is tracking a certain class's id"""
+    def _get_user_watchlist(self, user_id):
+        try:
+            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
+            json_object = json.load(a_file)
+            a_file.close()
+        except (FileNotFoundError, json.JSONDecodeError):
+            json_object = None
+
+        return json_object
+
+
+    def _is_watching(self, user_id, class_id):
+        """Checks if a user is tracking a certain class's id"""
+
+        watchlist = self._get_user_watchlist(user_id)
+
+        if watchlist is None:
+            return False
+
+        for my_class in watchlist:
+            if my_class["class_id"] == class_id:
+                return True
+
+        return False
+
         
 
-
-    async def _generate_class_view(self, ctx, subject: str, catalog: str, mode="slow", display_description=False, choices=False):
+    async def _generate_class_view(self, ctx, subject: str, catalog: str, term=None, user_id=None, mode="slow", display_description=False, choices=False):
         """
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
         on the resulting soups (from GetCourseSummary). Returns that lsit of name_soup_pairs.
         """
-        model_choices = list(self._search_for_class_model(subject, catalog))
+
+        model_choices = self._search_for_class_model(subject, catalog, term)
+        # model_choices = list(choices_generator)
 
         htmls = []
         for name_model_pair in model_choices:
@@ -409,13 +498,15 @@ class UCLA(commands.Cog):
             for i, name_soup_pair in enumerate(htmls):
                 parsed_class = self._parse_class(name_soup_pair)
 
+                # if we want to display class description, get it from the class details page
                 if display_description:
                     r = requests.get(parsed_class["url"])
                     soup = BeautifulSoup(r.content, "lxml")
                     parsed_class['description'] = \
                         soup.find("p", class_="class_detail_title", text="Course Description").findNext('p').contents[0]
 
-                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching()))
+                # generate and display embed with appropriate letter choice if desired
+                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"])))
 
         return htmls
 
@@ -448,25 +539,52 @@ class UCLA(commands.Cog):
     @commands.command(help="Search for a class in preparation to add to watch list")
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
-
         user_id = ctx.message.author.id
 
-        arg_list = args.split(' ')
-        # if the last word is "fast" or "slow", that's the mode
-        if arg_list[-1].lower() in ["fast", "slow"]:
-            mode = arg_list[-1].lower()
-            arg_list.pop()
-        else: 
-            # otherwise, default to fast if not specified
-            mode = "fast"
+        # arg_list = args.split(' ')
 
-        catalog = arg_list.pop()
+        # if validate_term(arg_list[-1].upper()):
+        #     term = arg_list[-1].upper()
+        #     arg_list.pop()
+        # else:
+        #     term = self.default_term
 
-        subject = ' '.join(arg_list)
+        # # if the last word is "fast" or "slow", that's the mode
+        # if arg_list[-1].lower() in ["fast", "slow"]:
+        #     mode = arg_list[-1].lower()
+        #     arg_list.pop()
+        # else: 
+        #     # otherwise, default to fast if not specified
+        #     mode = "fast"
+
+
+        args = vars(self.parser.parse_args(args.split()))
+
+        catalog = args["class_name"].pop()
+
+        subject = ' '.join(args["class_name"])
+
+        
+        await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog}\nUser: {ctx.message.author.name}\n")
+
+        if args.get("term") and not validate_term(args["term"]):
+            await ctx.send(f"{args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
+            return
+
+        if args.get("mode") and args["mode"] not in ["fast", "slow"]:
+            await ctx.send(f"The mode must be fast or slow, I saw {args['mode']}")
+            return
+
+        if not os.path.exists(self.data_dir.format(term=args.get("term") or self.default_term) + "/class_names.json"):
+            await ctx.send(f"You haven't looked up classes from {args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
-        htmls = await self._generate_class_view(ctx, subject, catalog, mode, choices=True)
-
+        try:
+            htmls = await self._generate_class_view(ctx, subject, catalog, args["term"], user_id, args["mode"], choices=True)
+        except KeyError:
+            await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
+            raise KeyError(f"Couldn't find subject {subject}")
+        
         # check if we actually found any
         if len(htmls) == 0:
             await ctx.send(f"Couldn't find that class.")
@@ -485,21 +603,21 @@ class UCLA(commands.Cog):
             except (FileNotFoundError, json.JSONDecodeError):
                 json_object = []
 
-            class_id = parse_class_id(str(name_soup_pair[1]))
+            parsed_class = self._parse_class(name_soup_pair)
 
 
             # check for duplicates
             for my_class in json_object:
-                if class_id == my_class["class_id"]:
+                if parsed_class['class_id'] == my_class["class_id"] and parsed_class['term'] == my_class["term"]:
                     await ctx.channel.send("You're already keeping track of that class!")
                     return
 
             # write class_id, *current* enrollment_status, and a name to the json
             json_object.append({
-                "class_id": parse_class_id(str(name_soup_pair[1])),
+                "class_id": parsed_class['class_id'],
                 "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
                 "class_name": name_soup_pair[0],
-                "term": self.term,
+                "term": parsed_class["term"],
             })
 
             a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
@@ -507,8 +625,8 @@ class UCLA(commands.Cog):
             a_file.close()
 
     @commands.command(help="Display info about a class, including description")
-    async def display_class(self, ctx, subject: str, catalog: str, mode="fast"):
-        await self._generate_class_view(ctx, subject, catalog, mode, display_description=True)
+    async def display_class(self, ctx, subject: str, catalog: str, term=None, user_id=None, mode="fast"):
+        await self._generate_class_view(ctx, subject, catalog, term, user_id, mode, display_description=True)
 
     @commands.command(help="Choose a class to remove from watchlist.")
     async def remove_class(self, ctx, mode="fast"):
@@ -537,8 +655,9 @@ class UCLA(commands.Cog):
             await ctx.send("You removed " + removed_class["class_name"])
 
     def check_class(self, name_model_pair):
-        """Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc.
-        
+        """
+        Use the GetCourseSummary endpoint to, given a model, get soup for all the rest of the info about the class like class_id, instructor, enrollment data, etc.
+
         Returns list of tuples of the form (class name from class_names JSON, associated soup from that corresponding model from class_names JSON)
         """
         name = name_model_pair[0]
@@ -559,13 +678,10 @@ class UCLA(commands.Cog):
     async def see_classes(self, ctx, mode="fast", choices=False):
 
         user_id = ctx.message.author.id
+        
+        json_object = self._get_user_watchlist(user_id)
 
-        try:
-            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
-            json_object = json.load(a_file)
-            print(json_object[0])
-            a_file.close()
-        except (FileNotFoundError, json.JSONDecodeError, KeyError, IndexError):
+        if json_object is None or len(json_object) == 0:
             await ctx.channel.send(
                 "Looks like you don't have any classes kept track of, or your data got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
             return None
@@ -574,11 +690,11 @@ class UCLA(commands.Cog):
         if mode == "fast":
             for n, my_class in enumerate(json_object):
                 # get class from public url
-                params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
+                params = {'t': my_class["term"], 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
 
-                await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None))
+                await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
 
         else:  # we're in the slow mode
             browser = await launch()
@@ -621,7 +737,7 @@ class UCLA(commands.Cog):
             need_change = False
 
             for my_class in json_object:
-                params = {'t': self.term, 'sBy': 'classidnumber', 'id': my_class['class_id']}
+                params = {'t': my_class['term'], 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
                 enrollment_data = soup.select_one("div[id$=-status_data]").text
@@ -652,14 +768,15 @@ class UCLA(commands.Cog):
     @commands.command(help="I start the count")
     async def start_the_count(self, ctx):
         self.check_for_change.start()
-        await self.bot.change_presence(status=discord.Status.online, activity=discord.CustomActivity("Updating"))
+        await self.bot.change_presence(status=discord.Status.online, activity=discord.Game("Updating"))
 
-    @commands.command(help="Join the count")
-    async def count_me_in(self, ctx):
-        self.users_list.append(ctx.message.author.id)
-        
 
     @commands.command(help="Stop the count")
     async def stop_the_count(self, ctx):
         self.check_for_change.stop()
-        await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.CustomActivity("Not updating"))
+        await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.discord.Game("Not updating"))
+
+
+    @tasks.loop(hours=24)
+    async def daily_reload(self):
+        pass

@@ -8,13 +8,23 @@ My attempt at imitating Courscicle for specifically UCLA courses. Also might be 
 
 ### ~search_class
 
-Given a class name (subject + catalog number, i.e. MATH 151AH or COM SCI 32), spit out 
+`~search_class SUBJECT CATALOG# [fast/slow] [term]`
 
-![asf](images/search.png)
+Given a class name (subject + catalog number, i.e. MATH 151AH or COM SCI 32), spit out lots of revelant information.
 
-There are two modes with this command: `fast` and `slow`. 
+There are two modes with this command: `fast` and `slow`. `fast` mode displays an embed:
 
-Defaults to fast mode, but if you type `slow` at the end of your command:
+![fast search](images/search.png)
 
+and `slow` mode goes to the Find a Class and Enroll search page to take a screenshot of 
+
+![slow search](images/search.png)
+
+Defaults to fast mode.
+
+TODO: Defaults whatever the current term is according to MyUCLA?
+
+### ~reload_json
+In case you want to re-fetch the list of classes from UCLA's schedule of classes.
 
 

@@ -6,4 +6,5 @@ env/
 .vscode/settings.json
 .vscode/.ropeproject/config.py
 .vscode/.ropeproject/objectdb
-speedchat_bot/ucla_data/watchlist/*
+speedchat_bot/ucla_data/*
+speedchat_bot/ucla_data/21W/class_names.json

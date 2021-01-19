@@ -5840,6 +5840,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ENGL   \",\"CatalogNumber\":\"0184    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"ENGL0184001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4NCAgICBFTkdMMDE4NDAwMQ==\"}"
             ],
             [
+                "189HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ENGL   \",\"CatalogNumber\":\"0189HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ENGL0189HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE4OUhDICBFTkdMMDE4OUhD\"}"
+            ],
+            [
                 "M192 - Undergraduate Practicum in English: Journals",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ENGL   \",\"CatalogNumber\":\"0192  M \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ENGL0192M\",\"MultiListedClassFlag\":\"y\",\"Token\":\"MDE5MiAgTSBFTkdMMDE5Mk0=\"}"
             ],
@@ -7242,6 +7246,10 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GEOG   \",\"CatalogNumber\":\"0194A C \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GEOG0194AC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NEEgQyBHRU9HMDE5NEFD\"}"
             ],
             [
+                "195 - Community or Corporate Internships in Geography",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GEOG   \",\"CatalogNumber\":\"0195    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GEOG0195\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NSAgICBHRU9HMDE5NQ==\"}"
+            ],
+            [
                 "198A - Honors Research in Geography I",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"GEOG   \",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"GEOG0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBHRU9HMDE5OEE=\"}"
             ],
@@ -8554,6 +8562,10 @@
             [
                 "194 - Research Group Seminar",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"INTL DV\",\"CatalogNumber\":\"0194    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"INTLDV0194\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5NCAgICBJTlRMRFYwMTk0\"}"
+            ],
+            [
+                "198A - Honors Research in International Development Studies",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"INTL DV\",\"CatalogNumber\":\"0198A   \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"INTLDV0198A\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDE5OEEgICBJTlRMRFYwMTk4QQ==\"}"
             ],
             [
                 "198B - Honors Research in International Development Studies",
@@ -12820,6 +12832,10 @@
             [
                 "50 - Introduction to Comparative Politics",
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"POL SCI\",\"CatalogNumber\":\"0050    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"POLSCI0050\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA1MCAgICBQT0xTQ0kwMDUw\"}"
+            ],
+            [
+                "89HC - Honors Contracts",
+                "{\"Term\":\"21W\",\"SubjectAreaCode\":\"POL SCI\",\"CatalogNumber\":\"0089HC  \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"POLSCI0089HC\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDA4OUhDICBQT0xTQ0kwMDg5SEM=\"}"
             ],
             [
                 "111B - Early Modern Political Theory",
