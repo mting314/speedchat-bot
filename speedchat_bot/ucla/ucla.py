@@ -8,6 +8,8 @@ import re
 from bs4 import BeautifulSoup
 import os
 import argparse
+import shutil
+import time
 
 import asyncio
 from pyppeteer import launch
@@ -134,14 +136,21 @@ class UCLA(commands.Cog):
 
         self.default_term = "21W"
         self.data_dir = "speedchat_bot/ucla_data/{term}"
-        self._reload_classes()
 
         self.daily_reload.start()
 
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('class_name', metavar='name', type=str, nargs='+',help='an integer for the accumulator')
+        self.parser.add_argument('class_name', metavar='name', type=str, nargs='+', help='an integer for the accumulator')
         self.parser.add_argument('--mode', dest='mode', default="fast")
         self.parser.add_argument('--term', dest='term', default=self.default_term)
+
+
+
+    def _get_current_terms(self):
+        url = "https://sa.ucla.edu/ro/Public/SOC/"
+        soup = BeautifulSoup(requests.get(url).content, "lxml")
+        all_terms =  map(lambda el: el.attrs['value'], soup.select("option.select_term"))
+        return list(filter(lambda x: validate_term(x), all_terms))
 
         
     
@@ -159,17 +168,44 @@ class UCLA(commands.Cog):
 
         class_list = []
 
-        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
-            self._reload_classes(term=term or self.default_term)
+        search_term = term or self.default_term
 
-        with open(self.data_dir.format(term=term or self.default_term) + "/class_names.json") as fp:
-            # TODO: Maybe separate subjects into their own json?
-            data = json.load(fp)['class_names']
-            classes_in_subject = data[subject]
-            for my_class in classes_in_subject:
-                if my_class[0].split()[0] == str(catalog):
-                    class_list.append((f"{subject} {my_class[0]}", my_class[1]))
-        
+        if not os.path.exists(self.data_dir.format(term=search_term) + "/class_names.json") and search_term in self.current_terms:
+            self._reload_classes(term=search_term)
+
+        if search_term in self.current_terms:
+            # we have a json for it, find it in there
+            with open(self.data_dir.format(term=search_term) + "/class_names.json") as fp:
+                # TODO: Maybe separate subjects into their own json?
+                data = json.load(fp)['class_names']
+                classes_in_subject = data[subject]
+                for my_class in classes_in_subject:
+                    if my_class[0].split()[0] == str(catalog):
+                        class_list.append((f"{subject} {my_class[0]}", my_class[1]))
+            
+        else:
+            # we don't bother storing a json, use old method
+            model = {"subj_area_cd":subject,"search_by":"subject","term_cd":search_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
+            pageNumber = 1
+            while True:
+                params = {'search_by': 'subject', 'model': model, "pageNumber":pageNumber, 'FilterFlags': filter_flags, '_': '1571869764769'}
+
+                url = _generate_url(self.COURSE_TITLES_VIEW, params)
+
+                r = requests.get(url, headers=HEADERS)
+                soup = BeautifulSoup(r.content, "lxml")
+                div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
+
+                for div, script in div_script_pairs:
+                    template = re.compile('"CatalogNumber":"([\d ]{8})"')
+                    if template.search(str(script)) and template.search(str(script))[1] == parse_catalog_no(catalog).ljust(8):
+                        class_list.append(  (div.select_one('a[id$="-title"]').text,  re.search("({.*?})", script.decode_contents())[1]) )
+                # when we get past all the result pages, we'll get nothing from requests.get
+                if r.content == b'':
+                    break
+
+                pageNumber += 1
+
         return class_list
 
 
@@ -267,16 +303,11 @@ class UCLA(commands.Cog):
                 subjects_file.write(subjects)
                 subjects_file.close()
 
-
-
-
     async def send_message(self, ctx, message):
         await ctx.send(message)
 
-
     def _reload_classes(self, ctx=None, term=None):
         # Load list of subjects parsed from UCLA website
-        # TODO: programatically get subjects.json
         if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/subjects.json"):
             self.get_subjects_for_term(term)
 
@@ -286,9 +317,20 @@ class UCLA(commands.Cog):
 
         class_name_dict = {}
 
+        # we're sending command from discord channel, so force the reload goes through regardless of when last updated
         if ctx:
             # await ctx.send(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
             self.send_message(ctx, "sfasf")
+        else: # we're coming from a daily reload, so we might not have to reload if file was updated recently 
+            if os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
+                f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
+                json_object = json.load(f)
+                f.close()
+
+                # if the last time the json was updated was less than a week ago, we don't have to actually reload
+                if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
+                    return
+
         print(f"Reloading the {term} class names JSON (this may take a minute or 2)...")
         for n, subject in enumerate(self.subjectsJSON):
             pageNumber = 1
@@ -325,7 +367,7 @@ class UCLA(commands.Cog):
 
         class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
         class_names_file.write(
-            json.dumps({"term": term or self.default_term, "class_names": class_name_dict}, indent=4, sort_keys=True))
+            json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, indent=4, sort_keys=True))
         class_names_file.close()
 
     def _parse_enrollment_status(self, my_string):
@@ -508,6 +550,8 @@ class UCLA(commands.Cog):
                 # generate and display embed with appropriate letter choice if desired
                 await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"])))
 
+        if len(htmls) == 0:
+            await ctx.channel.send("Sorry, I couldn't find that class.")
         return htmls
 
     async def _present_choices(self, ctx, num_choices):
@@ -541,23 +585,6 @@ class UCLA(commands.Cog):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
 
-        # arg_list = args.split(' ')
-
-        # if validate_term(arg_list[-1].upper()):
-        #     term = arg_list[-1].upper()
-        #     arg_list.pop()
-        # else:
-        #     term = self.default_term
-
-        # # if the last word is "fast" or "slow", that's the mode
-        # if arg_list[-1].lower() in ["fast", "slow"]:
-        #     mode = arg_list[-1].lower()
-        #     arg_list.pop()
-        # else: 
-        #     # otherwise, default to fast if not specified
-        #     mode = "fast"
-
-
         args = vars(self.parser.parse_args(args.split()))
 
         catalog = args["class_name"].pop()
@@ -565,7 +592,7 @@ class UCLA(commands.Cog):
         subject = ' '.join(args["class_name"])
 
         
-        await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog}\nUser: {ctx.message.author.name}\n")
+        await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog}\nTerm: {args.get('term')}\nUser: {ctx.message.author.name}\n")
 
         if args.get("term") and not validate_term(args["term"]):
             await ctx.send(f"{args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
@@ -587,7 +614,6 @@ class UCLA(commands.Cog):
         
         # check if we actually found any
         if len(htmls) == 0:
-            await ctx.send(f"Couldn't find that class.")
             return
 
         # Ask the user which one they want to select
@@ -625,8 +651,14 @@ class UCLA(commands.Cog):
             a_file.close()
 
     @commands.command(help="Display info about a class, including description")
-    async def display_class(self, ctx, subject: str, catalog: str, term=None, user_id=None, mode="fast"):
-        await self._generate_class_view(ctx, subject, catalog, term, user_id, mode, display_description=True)
+    async def display_class(self, ctx, *, args):
+        user_id = ctx.message.author.id
+        args = vars(self.parser.parse_args(args.split()))
+
+        catalog = args["class_name"].pop()
+
+        subject = ' '.join(args["class_name"])
+        htmls = await self._generate_class_view(ctx, subject, catalog, args.get("term"), user_id, args["mode"], display_description=True)
 
     @commands.command(help="Choose a class to remove from watchlist.")
     async def remove_class(self, ctx, mode="fast"):
@@ -779,4 +811,15 @@ class UCLA(commands.Cog):
 
     @tasks.loop(hours=24)
     async def daily_reload(self):
-        pass
+        # flush data
+        self.current_terms = self._get_current_terms()
+
+        data_dirs = list(os.walk("speedchat_bot/ucla_data"))[0][1]
+        data_dirs.remove("watchlist")
+        for term_folder in data_dirs:
+            if term_folder not in self.current_terms:
+                shutil.rmtree("speedchat_bot/ucla_data/"+term_folder)
+
+        for term in self.current_terms:
+            self._reload_classes(term=term)
+            return # only reload one

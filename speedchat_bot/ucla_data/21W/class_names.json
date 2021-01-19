@@ -520,6 +520,7 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"AN N EA\",\"CatalogNumber\":\"0599    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ANNEA0599\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDU5OSAgICBBTk5FQTA1OTk=\"}"
             ]
         ],
+        "ANES": [],
         "ANTHRO": [
             [
                 "1 - Human Evolution",
@@ -4082,6 +4083,7 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"DANCE  \",\"CatalogNumber\":\"0490    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"DANCE0490\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDQ5MCAgICBEQU5DRTA0OTA=\"}"
             ]
         ],
+        "DENT": [],
         "DESMA": [
             [
                 "8 - Media Histories",
@@ -12197,6 +12199,7 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"OBGYN  \",\"CatalogNumber\":\"0019    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\" 001  \",\"SequenceNumber\":null,\"Path\":\"OBGYN0019001\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDAxOSAgICBPQkdZTjAwMTkwMDE=\"}"
             ]
         ],
+        "OPTH": [],
         "ORL BIO": [
             [
                 "260 - Oral Biology Seminar",
@@ -12219,6 +12222,7 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"ORL BIO\",\"CatalogNumber\":\"0599    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"ORLBIO0599\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDU5OSAgICBPUkxCSU8wNTk5\"}"
             ]
         ],
+        "ORTHPDC": [],
         "PATH": [
             [
                 "296 - Research Topics in Pathology",
@@ -15617,6 +15621,7 @@
                 "{\"Term\":\"21W\",\"SubjectAreaCode\":\"URBN PL\",\"CatalogNumber\":\"0599    \",\"IsRoot\":true,\"SessionGroup\":\"%\",\"ClassNumber\":\"%\",\"SequenceNumber\":null,\"Path\":\"URBNPL0599\",\"MultiListedClassFlag\":\"n\",\"Token\":\"MDU5OSAgICBVUkJOUEwwNTk5\"}"
             ]
         ],
+        "UROLOGY": [],
         "VIETMSE": [
             [
                 "2 - Introductory Vietnamese",
@@ -15772,5 +15777,6 @@
             ]
         ]
     },
+    "last_updated": 1611041808.136336,
     "term": "21W"
 }
