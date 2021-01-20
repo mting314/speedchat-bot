@@ -197,8 +197,14 @@ class UCLA(commands.Cog):
                 div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
                 for div, script in div_script_pairs:
-                    template = re.compile('"CatalogNumber":"([\d A-Z]{8})"')
-                    if template.search(str(script)) and template.search(str(script))[1] == parse_catalog_no(catalog).ljust(8):
+                    # I'll define the *human catalog number* as the one we're selecting here
+                    # UCLA seems to store some really wack catalog numbers inside the script,
+                    # i.e. COM SCI M152A -> 0152A M
+                    # I probably could figure out a pattern but I can't know every possibility
+                    # Plus, if someone doesn't get the human name right, I think that's on them
+                    # BUT WHAT IF SPACE IN CATALOG NUMBER
+                    class_name = div.select_one('a[id$="-title"]').text
+                    if class_name.split("-", 1)[0][:-1] == catalog:
                         class_list.append(  (div.select_one('a[id$="-title"]').text,  re.search("({.*?})", script.decode_contents())[1]) )
                 # when we get past all the result pages, we'll get nothing from requests.get
                 if r.content == b'':
@@ -262,12 +268,14 @@ class UCLA(commands.Cog):
 
         await element.screenshot(path='candidate.png')
         if letter_choice:
-            await ctx.channel.send(f"Choice {letter_choice}", file=discord.File('candidate.png'))
+            message = await ctx.channel.send(f"Choice {letter_choice}", file=discord.File('candidate.png'))
         else:
-            await ctx.channel.send(file=discord.File('candidate.png'))
+            message = await ctx.channel.send(file=discord.File('candidate.png'))
 
         if os.path.exists("candidate.png"):
             os.remove("candidate.png")
+
+        return message
 
     @commands.command(help="Switch to a new term for searching (i.e. to 20F)")
     @is_admin()
@@ -312,8 +320,8 @@ class UCLA(commands.Cog):
 
     def _reload_classes(self, ctx=None, term=None):
         # Load list of subjects parsed from UCLA website
-        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/subjects.json"):
-            self.get_subjects_for_term(term)
+        # if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/subjects.json"):
+        self.get_subjects_for_term(term)
 
         f = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json")
         self.subjectsJSON = json.load(f)
@@ -366,8 +374,11 @@ class UCLA(commands.Cog):
         class_names_file.close()
 
     def _parse_enrollment_status(self, my_string):
-        """Go through the dictionary of enrollment regexes, return an enrollment dictionary when the right match is
-        found. """
+        """
+        Go through the dictionary of enrollment regexes, return an enrollment dictionary
+        
+        with count, capacity, etc numbers when the right match is found.
+        """
 
         for potential_status, regex in self.status_regexes.items():
             matches = regex.match(my_string)
@@ -394,6 +405,10 @@ class UCLA(commands.Cog):
                 return enrollment_dict
 
     def _parseWaitlistData(self, my_string):
+        """
+        Go through the dictionary of waitlist regexes, return a waitlist dictionary when
+        the right match is found.
+        """
         for potential_status, regex in self.waitlist_regexes.items():
             matches = regex.match(my_string)
             if matches is None:
@@ -500,7 +515,7 @@ class UCLA(commands.Cog):
     async def _generate_class_view(self, ctx, subject: str, catalog: str, term=None, user_id=None, mode="slow", display_description=False, choices=False):
         """
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
-        on the resulting soups (from GetCourseSummary). Returns that lsit of name_soup_pairs.
+        on the resulting soups (from GetCourseSummary). Returns that a list that pairs the html with its associated message.
         """
 
         model_choices = self._search_for_class_model(subject, catalog, term)
@@ -523,6 +538,7 @@ class UCLA(commands.Cog):
         # cons: Looks pretty ugly, quite a bit harder to read easily (especially picking out the important)
         # bits like enrollment status and instructor
 
+        messages = []
         if mode == "slow":
             browser = await launch()
 
@@ -530,7 +546,8 @@ class UCLA(commands.Cog):
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the
                 # GetCourseSummary html
                 class_id = parse_class_id(str(name_soup_pair[1]))
-                await self._generate_image(browser, class_id, ctx, letter_choice=chr(i + 65) if choices else None)
+                message = await self._generate_image(browser, class_id, ctx, letter_choice=chr(i + 65) if choices else None)
+                message.append(message)
 
             await browser.close()
 
@@ -546,11 +563,13 @@ class UCLA(commands.Cog):
                         soup.find("p", class_="class_detail_title", text="Course Description").findNext('p').contents[0]
 
                 # generate and display embed with appropriate letter choice if desired
-                await ctx.channel.send(embed=self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"])))
+                generated_embed = self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"]))
+                message = await ctx.channel.send(embed=generated_embed)
+                messages.append(message)
 
         if len(htmls) == 0:
             await ctx.channel.send("Sorry, I couldn't find that class.")
-        return htmls
+        return list(zip(htmls, messages))
 
     async def _present_choices(self, ctx, num_choices):
         """Given a (int) number of choices, send a message asking to choose one, with reactions for easy selecting"""
@@ -612,31 +631,29 @@ class UCLA(commands.Cog):
 
         # fetch list of class HTMLS
         try:
-            htmls = await self._generate_class_view(ctx, subject, catalog, args["term"], user_id, args["mode"], choices=True)
+            messages = await self._generate_class_view(ctx, subject, catalog, args["term"], user_id, args["mode"], choices=True)
         except KeyError:
             await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
             raise KeyError(f"Couldn't find subject {subject}")
         
         # check if we actually found any
-        if len(htmls) == 0:
+        if len(messages) == 0:
             return
 
         # Ask the user which one they want to select
-        choice_index = await self._present_choices(ctx, len(htmls))
+        choice_index = await self._present_choices(ctx, len(messages))
 
         # Warning if term is really long ago
         if args.get("term") not in self.current_terms:
             await ctx.send(f"{args.get('term')} doesn't seem to be relevant right now. Are you sure you want to track a class from that term?")
         # And add that selection to their watchlist
         if choice_index is not None:
-            name_soup_pair = htmls[choice_index]
+            name_soup_pair, _ = messages.pop(choice_index)
+
+            for _, message in messages:
+                await message.delete()
+
             # read
-            # try:
-            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
-            #     json_object = json.load(a_file)
-            #     a_file.close()
-            # except (FileNotFoundError, json.JSONDecodeError):
-            #     json_object = []
 
             json_object = self._get_user_watchlist(user_id) or []
 
@@ -798,8 +815,9 @@ class UCLA(commands.Cog):
 
                 #  Current status  changed from   previously recorded status
                 if enrollment_data      !=        my_class["enrollment_data"]:
+                    myid = f"<@{user_id}>"
                     await self.bot.get_user(int(user_id)).send(
-                        f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                        f'{myid} {my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                     my_class['enrollment_data'] = enrollment_data
                     need_change = True
