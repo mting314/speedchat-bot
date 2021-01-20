@@ -221,6 +221,7 @@ class UCLA(commands.Cog):
         embedVar.add_field(name="Times", value=parsed_class["times"], inline=True)
         embedVar.add_field(name="Days", value=parsed_class["days"], inline=True)
         embedVar.add_field(name="Locations", value=parsed_class["locations"], inline=True)
+        embedVar.add_field(name="Instructors", value=parsed_class["instructors"], inline=True)
 
         embedVar.add_field(name="Enrollment Status",
                            value=f'{parsed_class["enrollment_status"]} ({parsed_class["enrollment_count"]}/{parsed_class["enrollment_capacity"]} enrolled)',
@@ -428,6 +429,8 @@ class UCLA(commands.Cog):
         days = _parse_string_to_array(soup.select_one("div[id$=-days_data] p a"))
         times = _parse_string_to_array(soup.select_one("div[id$=-time_data]>p") or None)
 
+        instructors = _parse_string_to_array(soup.select_one("div[id$=-instructor_data]>p") or None)
+
         # I hope it always looks lile <div id="blah-units_data"><p> # of units </p></div>
         # could be wrong...
         units = soup.select_one("div[id$=-units_data] p").text
@@ -443,6 +446,7 @@ class UCLA(commands.Cog):
             "class_name": name,
             "term": parse_term(str(soup)),
             "section_name": section_name,
+            "instructors": instructors,
             "days": days,
             "times": times,
             "locations": locations,
@@ -751,15 +755,21 @@ class UCLA(commands.Cog):
 
         # iterate through all the files in the watchlist directory
         for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
-            try:
-                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
-                json_object = json.load(a_file)
-                a_file.close()
-            except (FileNotFoundError, json.JSONDecodeError):
-                # The file is not there/unreadable, no point going on to check
-                return
+            # try:
+            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
+            #     json_object = json.load(a_file)
+            #     a_file.close()
+            # except (FileNotFoundError, json.JSONDecodeError):
+            #     # The file is not there/unreadable, no point going on to check
+            #     return
+
 
             user_id, _ = os.path.splitext(user_watchlist)
+            json_object = self._get_user_watchlist(user_id)
+            
+            if json_object is None:
+                # The file is not there/unreadable, no point going on to check
+                break
 
             need_change = False
 
@@ -807,7 +817,7 @@ class UCLA(commands.Cog):
 
     def _needs_reload(self, term):
         if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
-            return False
+            return True
         else:
             f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
             json_object = json.load(f)
@@ -815,9 +825,9 @@ class UCLA(commands.Cog):
 
             # if the last time the json was updated was less than a week ago, we don't have to actually reload
             if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
-                return True
-            else:
                 return False
+            else:
+                return True
 
 
     @tasks.loop(hours=24)
