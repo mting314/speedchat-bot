@@ -755,7 +755,7 @@ class UCLA(commands.Cog):
         """
 
         # iterate through all the files in the watchlist directory
-        for user_watchlist in self.users_list:
+        for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
             try:
                 a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
                 json_object = json.load(a_file)
@@ -774,7 +774,7 @@ class UCLA(commands.Cog):
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
                 enrollment_data = soup.select_one("div[id$=-status_data]").text
 
-                await self.bot.get_user(int(user_id)).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                # await self.bot.get_user(int(user_id)).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                 #  Current status  changed from   previously recorded status
                 if enrollment_data      !=        my_class["enrollment_data"]:
@@ -798,15 +798,16 @@ class UCLA(commands.Cog):
         await ctx.send("Stopped checking for classes")
 
     @commands.command(help="I start the count")
+    @is_owner()
     async def start_the_count(self, ctx):
         self.check_for_change.start()
         await self.bot.change_presence(status=discord.Status.online, activity=discord.Game("Updating"))
 
-
     @commands.command(help="Stop the count")
+    @is_owner()
     async def stop_the_count(self, ctx):
         self.check_for_change.stop()
-        await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.discord.Game("Not updating"))
+        await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game("Not updating"))
 
 
     @tasks.loop(hours=24)
