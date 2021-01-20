@@ -321,15 +321,6 @@ class UCLA(commands.Cog):
         if ctx:
             # await ctx.send(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
             self.send_message(ctx, "sfasf")
-        else: # we're coming from a daily reload, so we might not have to reload if file was updated recently 
-            if os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
-                f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
-                json_object = json.load(f)
-                f.close()
-
-                # if the last time the json was updated was less than a week ago, we don't have to actually reload
-                if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
-                    return
 
         print(f"Reloading the {term} class names JSON (this may take a minute or 2)...")
         for n, subject in enumerate(self.subjectsJSON):
@@ -618,6 +609,10 @@ class UCLA(commands.Cog):
 
         # Ask the user which one they want to select
         choice_index = await self._present_choices(ctx, len(htmls))
+
+        # Warning if term is really long ago
+        if args.get("term") not in self.current_terms:
+            await ctx.send(f"{args.get('term')} doesn't seem to be relevant right now. Are you sure you want to track a class from that term?")
         # And add that selection to their watchlist
         if choice_index is not None:
             name_soup_pair = htmls[choice_index]
@@ -750,7 +745,7 @@ class UCLA(commands.Cog):
     async def check_for_change(self):
         """
         Loop that when activated, every 15 seconds checks if a class's status has changed.
-        If a class's status has changed,
+        If a class's status has changed, alert user that was watching it, and update their watchlist's data
         
         """
 
@@ -810,8 +805,24 @@ class UCLA(commands.Cog):
         await self.bot.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game("Not updating"))
 
 
+    def _needs_reload(self, term):
+        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
+            return False
+        else:
+            f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
+            json_object = json.load(f)
+            f.close()
+
+            # if the last time the json was updated was less than a week ago, we don't have to actually reload
+            if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
+                return True
+            else:
+                return False
+
+
     @tasks.loop(hours=24)
     async def daily_reload(self):
+        print("Starting daily reload")
         # flush data
         self.current_terms = self._get_current_terms()
 
@@ -822,5 +833,6 @@ class UCLA(commands.Cog):
                 shutil.rmtree("speedchat_bot/ucla_data/"+term_folder)
 
         for term in self.current_terms:
-            self._reload_classes(term=term)
-            return # only reload one
+            if self._needs_reload(term):
+                self._reload_classes(term=term)
+                return # reload at most 1 class
