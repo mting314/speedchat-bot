@@ -197,7 +197,7 @@ class UCLA(commands.Cog):
                 div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
                 for div, script in div_script_pairs:
-                    template = re.compile('"CatalogNumber":"([\d ]{8})"')
+                    template = re.compile('"CatalogNumber":"([\d A-Z]{8})"')
                     if template.search(str(script)) and template.search(str(script))[1] == parse_catalog_no(catalog).ljust(8):
                         class_list.append(  (div.select_one('a[id$="-title"]').text,  re.search("({.*?})", script.decode_contents())[1]) )
                 # when we get past all the result pages, we'll get nothing from requests.get
