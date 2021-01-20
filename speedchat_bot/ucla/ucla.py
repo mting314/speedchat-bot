@@ -223,6 +223,9 @@ class UCLA(commands.Cog):
         embedVar.add_field(name="Locations", value=parsed_class["locations"], inline=True)
         embedVar.add_field(name="Instructors", value=parsed_class["instructors"], inline=True)
 
+        # this forces next fields onto new line
+        embedVar.add_field(name = chr(173), value = chr(173))
+
         embedVar.add_field(name="Enrollment Status",
                            value=f'{parsed_class["enrollment_status"]} ({parsed_class["enrollment_count"]}/{parsed_class["enrollment_capacity"]} enrolled)',
                            inline=True)
@@ -440,18 +443,18 @@ class UCLA(commands.Cog):
         details_url_parts = dict(urlparse.parse_qsl(list(urlparse.urlparse(details_url))[4]))
 
         class_dict = {
-            "subject": details_url_parts['subj_area_cd'].strip(),
-            "class_no": details_url_parts['class_no'].strip(),
-            "class_id": parse_class_id(str(soup)),
-            "class_name": name,
-            "term": parse_term(str(soup)),
-            "section_name": section_name,
-            "instructors": instructors,
-            "days": days,
-            "times": times,
-            "locations": locations,
-            "units": units,
-            "url": details_url,
+            "subject":         details_url_parts['subj_area_cd'].strip(),
+            "class_no":        details_url_parts['class_no'].strip(),
+            "class_id":        parse_class_id(str(soup)),
+            "class_name":      name,
+            "term":            parse_term(str(soup)),
+            "section_name":    section_name,
+            "instructors":     '\n'.join(instructors),
+            "days":            '\n'.join(days),
+            "times":           '\n'.join(times),
+            "locations":       '\n'.join(locations),
+            "units":           units,
+            "url":             details_url,
             "enrollment_data": enrollment_data,
         }
 
@@ -572,7 +575,14 @@ class UCLA(commands.Cog):
                     # The index of our choice will correspond with how "far" out emoji
                     # choice was past number that corresponds with the A emoji
                     choice_index = ord(r.emoji) - A_EMOJI_INT
+
+                    if ctx.guild:
+                        for emoji_choice in emoji_choices:
+                            await status.clear_reaction(emoji_choice)
+                        await status.clear_reaction(NO_EMOJI)
+
                     return choice_index
+
 
 
     @commands.command(help="Search for a class in preparation to add to watch list")
@@ -621,12 +631,14 @@ class UCLA(commands.Cog):
         if choice_index is not None:
             name_soup_pair = htmls[choice_index]
             # read
-            try:
-                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
-                json_object = json.load(a_file)
-                a_file.close()
-            except (FileNotFoundError, json.JSONDecodeError):
-                json_object = []
+            # try:
+            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
+            #     json_object = json.load(a_file)
+            #     a_file.close()
+            # except (FileNotFoundError, json.JSONDecodeError):
+            #     json_object = []
+
+            json_object = self._get_user_watchlist(user_id) or []
 
             parsed_class = self._parse_class(name_soup_pair)
 
@@ -740,7 +752,10 @@ class UCLA(commands.Cog):
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
 
-        if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
+        # if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
+        #     os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
+
+        if self._get_user_watchlist(user_id):
             os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
 
         await ctx.send(f"Classes cleared for {ctx.message.author.name}.")
@@ -766,7 +781,7 @@ class UCLA(commands.Cog):
 
             user_id, _ = os.path.splitext(user_watchlist)
             json_object = self._get_user_watchlist(user_id)
-            
+
             if json_object is None:
                 # The file is not there/unreadable, no point going on to check
                 break
@@ -790,6 +805,7 @@ class UCLA(commands.Cog):
                     need_change = True
 
             if need_change:
+                # update watchlist
                 a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "w")
                 json.dump(json_object, a_file)
                 a_file.close()
