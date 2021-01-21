@@ -370,7 +370,7 @@ class UCLA(commands.Cog):
 
         class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
         class_names_file.write(
-            json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, indent=4, sort_keys=True))
+            json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, sort_keys=True))
         class_names_file.close()
 
     def _parse_enrollment_status(self, my_string):
@@ -659,7 +659,6 @@ class UCLA(commands.Cog):
 
             parsed_class = self._parse_class(name_soup_pair)
 
-
             # check for duplicates
             for my_class in json_object:
                 if parsed_class['class_id'] == my_class["class_id"] and parsed_class['term'] == my_class["term"]:
@@ -693,7 +692,7 @@ class UCLA(commands.Cog):
 
         user_id = ctx.message.author.id
 
-        json_object = await self.see_classes(ctx, mode, choices=True)
+        json_object, messages = await self.see_classes(ctx, mode, choices=True)
 
         if json_object is None:
             return
@@ -703,6 +702,8 @@ class UCLA(commands.Cog):
         if choice_index is not None:
             # based on the emoji index, choose the corresponding entry of the htmls
             removed_class = json_object.pop(choice_index)
+            message = messages.pop(choice_index)
+            await message.delete()
 
             if len(json_object) == 0:
                 if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
@@ -744,8 +745,9 @@ class UCLA(commands.Cog):
         if json_object is None or len(json_object) == 0:
             await ctx.channel.send(
                 "Looks like you don't have any classes kept track of, or your data got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
-            return None
+            return None, None
 
+        messages = []
 
         if mode == "fast":
             for n, my_class in enumerate(json_object):
@@ -754,15 +756,19 @@ class UCLA(commands.Cog):
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
 
-                await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
+                message = await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
+                messages.append(message)
 
         else:  # we're in the slow mode
             browser = await launch()
             for n, my_class in enumerate(json_object):
-                self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
+                message = self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
+                messages.append(message)
             await browser.close()
+        
+        await ctx.send(f"There are the classes in {ctx.message.author.name}'s watchlist.")
 
-        return json_object
+        return json_object, messages
 
 
     @commands.command(help='Clear classes a user\'s "to watch" list')
@@ -787,14 +793,6 @@ class UCLA(commands.Cog):
 
         # iterate through all the files in the watchlist directory
         for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
-            # try:
-            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "r")
-            #     json_object = json.load(a_file)
-            #     a_file.close()
-            # except (FileNotFoundError, json.JSONDecodeError):
-            #     # The file is not there/unreadable, no point going on to check
-            #     return
-
 
             user_id, _ = os.path.splitext(user_watchlist)
             json_object = self._get_user_watchlist(user_id)
