@@ -869,7 +869,7 @@ class UCLA(commands.Cog):
         self.current_terms = self._get_current_terms()
 
         data_dirs = list(os.walk("speedchat_bot/ucla_data"))[0][1]
-        data_dirs.remove("watchlist")
+        data_dirs.discard("watchlist")
         for term_folder in data_dirs:
             if term_folder not in self.current_terms:
                 shutil.rmtree("speedchat_bot/ucla_data/"+term_folder)
