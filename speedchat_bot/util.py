@@ -42,92 +42,26 @@ class Util(commands.Cog):
                 count += 1
         await status.edit(content=f"Found {count} messages matching your query.")
 
-    # list all users in a role
-    @commands.command(help="List all the users with a given (set of) role(s)")
-    async def lsrole(self, ctx, *, pattern: str):
-        status = await ctx.send(f"Gathering users")
-        users = []
-        for u in ctx.guild.members:
-            for r in u.roles:
-                if r.guild == ctx.guild and re.match(pattern, r.name):
-                    users.append(f"{u.name}#{u.discriminator}")
-                    break
-        found = len(users)
-        idx = 0
-        print(found)
+    # count messages
+    @commands.command(help="Count messages matching a regex")
+    async def help_commands(self, ctx):
+        """Build a Discord Embed message to show all commands"""
 
-        while True:
-            print(idx)
-            preview = '\n'.join(users[idx:idx + 10])
-            await status.edit(content=f"Here's entries {idx} through {idx + 10}:\n{preview}")
-            await status.add_reaction("⬅️")
-            await status.add_reaction("➡️")
-            try:
-                r, _ = await self.bot.wait_for("reaction_add",
-                                               check=lambda r, u: u == ctx.author and r.message.id == status.id,
-                                               timeout=TMPMSG_DEFAULT)
-            except asyncio.TimeoutError:
-                break
-            else:
-                if r.emoji == "⬅️":
-                    idx -= 10
-                if r.emoji == "➡️":
-                    idx += 10
-                if idx >= found or idx <= 0:
-                    idx = 0
-                await status.clear_reaction("⬅️")
-                await status.clear_reaction("➡️")
+        #TODO: Split this into help for each command?
 
-    # bulk deletion tool
-    @commands.command(name="d", help="Delete messages")
-    async def delete(self, ctx, *args):
-        status = await ctx.send("Standby...")
+        title = 'Welcome to Toontown!'
 
-        channels = [ctx.channel]
-        before = None
-        after = None
-
-        while True:
-            msg = "Welcome to the bulk-deletion tool.\n"
-            if channels != [ctx.channel]:
-                msg += f"Channels: {[c.name for c in channels]}\n"
-            if before:
-                msg += f"Before: {before}\n"
-            if after:
-                msg += f"After: {after}\n"
-            msg += f"React with {OK_EMOJI} to execute, {NO_EMOJI} to cancel.\n"
-
-            await status.edit(content=msg)
-            await status.add_reaction(NO_EMOJI)
-            await status.add_reaction(OK_EMOJI)
-
-            try:
-                r, _ = await self.bot.wait_for("reaction_add",
-                                               timeout=TMPMSG_DEFAULT,
-                                               check=lambda r, u: u == ctx.author and r.emoji in INPUT)
-            except asyncio.TimeoutError:
-                await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
-                return
-            else:
-                if r.emoji == OK_EMOJI:
-                    await status.edit(content="Starting deletion...")
-                    break
-                if r.emoji == NO_EMOJI:
-                    await status.edit(content="Aborted!", delete_after=TMPMSG_DEFAULT)
-                    return
-
-        for c in channels:
-            await status.edit(content=f"Deleting messages found in {c.name}")
-
-            history = [m async for m in c.history(limit=MSG_LIMIT) if m.id != status.id]
-            tasks = [asyncio.gather(*[m.delete() for m in history[i:i + 100]]) for i in range(0, len(history), 100)]
-            count = len(tasks)
-
-            await status.edit(content=f"Found {count} batches of ~100 messages. Executing.")
-            for i, t in enumerate(tasks):
-                await t
-                await status.edit(content=f"Completed batch {i + 1}/{count}.")
-
-            await status.edit(content=f"Done.")
-
-        await status.edit(content="Transaction completed successfully.", delete_after=TMPMSG_DEFAULT)
+        embedVar = discord.Embed(title=title)
+        embedVar.add_field(name="Overview", value="Allows you to easily look up UCLA classes by name and term. You can also add as many classes as you want to a **watchlist**, where you'll be DM'ed by this bot every time the enrollment status of a class listed there changes.", inline=False)
+        embedVar.add_field(name="~display_class", value="```\n~display_class MATH 131A --term 21W --mode fast``` Displays all offerings of a class with that name along with lots of helpful info about it (meeting times, professor, enrollment numbers, etc.) Make sure to use the subject name abbreviation as it appears on the Class Planner, i.e. MATH or COM SCI or C&S BIO. Term is in the format 20F/21W/21S.\nMode can be `fast` or `slow`. The order in which you provide term and mode doesn't matter.", inline=False)
+        embedVar.add_field(name="~subject", value="```\n~subject JAPAN [--term] [--mode]``` Displays *all* classes under provided subject. Will ask you if you want to display classes above 300s because those classes are weird.", inline=False)
+        
+        embedVar.add_field(name="~search_class", value="```\n~search_class COM SCI 35L [--term] [--mode]``` Same usage and mostly same appearance as `display_class`. However, at the end, you will be presented with choice reaction emojis. Choose a reaction to have the corresponding class added to your watchlist.", inline=False)
+        embedVar.add_field(name="~see_classes", value="```\n~see_classes``` Displays all classes in your (message author's) watchlist.", inline=False)
+        embedVar.add_field(name="~remove_class", value="```\n~remove_classes``` Displays all classes in your (message author's) watchlist, and then presents similar reaction choices to `search_class`. Choose the appropriate reaction to remove that class from your watchlist.", inline=False)
+        embedVar.add_field(name="~clear_classes", value="```\n~remove_classes``` Removes all classes from your (message author's) watchlist.", inline=False)
+        # TODO: upload image to pic serves to use here, can use local file
+        # embedVar.set_image(url="https://discordapp.com/assets/e4923594e694a21542a489471ecffa50.svg")
+        
+        
+        await ctx.send(embed=embedVar)
