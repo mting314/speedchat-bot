@@ -18,7 +18,6 @@ from speedchat.speedchat import Speedchat
 from ucla.ucla import UCLA
 
 from constants import *
-from util import Util
 
 # import logging
 
@@ -37,12 +36,10 @@ async def on_ready():
     logging.info(cli)
     logging.info(f"Successfully logged in as {cli.user}.")
     print(f"Successfully logged in as {cli.user}.")
-    await cli.change_presence(status=discord.Status.dnd,
-                              activity=discord.CustomActivity("Not updating"))
+    await cli.change_presence(status=discord.Status.online, activity=discord.Game("Updating"))
 
 
 # cog setup
-cli.add_cog(Util(cli))
 cli.add_cog(BotTools(cli))
 cli.add_cog(Japanese(cli))
 cli.add_cog(Speedchat(cli))
