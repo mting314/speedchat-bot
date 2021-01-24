@@ -13,20 +13,6 @@ class BotTools(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # regurgitate some information about the bot.
-    @commands.command(help="Info-dump about the bot")
-    async def about(self, ctx):
-        await ctx.channel.send(ABOUT)
-
-    # regurgitate some information about yourself.
-    @commands.command(help="Info-dump about the user and their perms")
-    async def whoami(self, ctx):
-        if is_owner()(ctx):
-            await ctx.send(f"お父さん！")
-        else:
-            admin = is_admin()(ctx)
-            await ctx.send(f"You are {ctx.author}. You are {'not ' if not admin else ''}an admin, and are not my dad.",
-                           delete_after=TMPMSG_DEFAULT)
 
     # set bot status
     @commands.command(help="Set the bot status")
@@ -59,3 +45,30 @@ class BotTools(commands.Cog):
         portal = await ctx.send("```\nOpening the portal...\n```")
         msg = [m.content async for m in (user.dm_channel or await user.create_dm()).history()]
         await portal.edit(content=f"Got some messages: {msg}", delete_after=TMPMSG_DEFAULT)
+
+    # count messages
+    @commands.command(help="Count messages matching a regex")
+    async def about(self, ctx):
+        """Build a Discord Embed message to introduce """
+
+        #TODO: Split this into help for each command?
+
+        title = 'Welcome to Toontown!'
+
+        embedVar = discord.Embed(title=title)
+
+
+
+        embedVar.add_field(name="Overview", value="Allows you to easily look up UCLA classes by name and term. You can also add as many classes as you want to a **watchlist**, where you'll be DM'ed by this bot every time the enrollment status of a class listed there changes.", inline=False)
+        embedVar.add_field(name="~display_class", value="```\n~display_class MATH 131A --term 21W --mode fast``` Displays all offerings of a class with that name along with lots of helpful info about it (meeting times, professor, enrollment numbers, etc.) Make sure to use the subject name abbreviation as it appears on the Class Planner, i.e. MATH or COM SCI or C&S BIO. Term is in the format 20F/21W/21S.\nMode can be `fast` or `slow`. The order in which you provide term and mode doesn't matter.", inline=False)
+        embedVar.add_field(name="~subject", value="```\n~subject JAPAN [--term] [--mode]``` Displays *all* classes under provided subject. Will ask you if you want to display classes above 300s because those classes are weird.", inline=False)
+        
+        embedVar.add_field(name="~search_class", value="```\n~search_class COM SCI 35L [--term] [--mode]``` Same usage and mostly same appearance as `display_class`. However, at the end, you will be presented with choice reaction emojis. Choose a reaction to have the corresponding class added to your watchlist.", inline=False)
+        embedVar.add_field(name="~see_watchlist", value="```\n~see_watchlist``` Displays all classes in your (message author's) watchlist.", inline=False)
+        embedVar.add_field(name="~remove_class", value="```\n~remove_classes``` Displays all classes in your (message author's) watchlist, and then presents similar reaction choices to `search_class`. Choose the appropriate reaction to remove that class from your watchlist.", inline=False)
+        embedVar.add_field(name="~clear_classes", value="```\n~remove_classes``` Removes all classes from your (message author's) watchlist.", inline=False)
+        # TODO: upload image to pic serves to use here, can use local file
+        # embedVar.set_image(url="https://discordapp.com/assets/e4923594e694a21542a489471ecffa50.svg")
+        
+        
+        await ctx.send(embed=embedVar)
