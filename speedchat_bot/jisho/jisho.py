@@ -129,10 +129,6 @@ def contains_kana(word):
 kanjiRegex = '[\u4e00-\u9faf\u3400-\u4dbf]'
 
 
-# def uriForExampleSearch(phrase):
-#     return "http://" +  urllib.parse.quote(f'{SCRAPE_BASE_URI}{phrase}#sentences')
-
-
 def getKanjiAndKana(div):
     ul = div.select_one('ul')
     # contents = ul.contents()
