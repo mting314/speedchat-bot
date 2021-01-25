@@ -140,12 +140,13 @@ class UCLA(commands.Cog):
         self.data_dir = "speedchat_bot/ucla_data/{term}"
 
         self.daily_reload.start()
+        self.check_for_change.start()
 
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument('class_name', metavar='name', type=str, nargs='+', help='an integer for the accumulator')
         self.parser.add_argument('--mode', dest='mode', default="fast")
-        self.parser.add_argument('--term', dest='term', default=self.default_term)
-
+        self.parser.add_argument('--term', dest='term', default=None)
+        self.parser.add_argument('--deep', action='store_true')
 
 
     def _get_current_terms(self):
@@ -279,12 +280,12 @@ class UCLA(commands.Cog):
 
         return message
 
-    @commands.command(help="Switch to a new term for searching (i.e. to 20F)")
-    @is_admin()
+    @commands.command()
+    @is_owner()
     async def switch_term(self, ctx, new_term: str):
         # First, is this the right format?
-        new_term = validate_term(new_term)
-        if not new_term:
+        is_term = validate_term(new_term)
+        if not is_term:
             ctx.channel.send(f"Sorry, {new_term} looks like a malformed term.")
             return
 
@@ -296,9 +297,9 @@ class UCLA(commands.Cog):
         self.default_term = new_term
         self._reload_classes()
 
-    @commands.command(help="Search for a class in preparation to add to watch list")    
-    async def reload_classes(self, ctx, term=None):
-        self._reload_classes(ctx, term)
+    # @commands.command(help="Search for a class in preparation to add to watch list")    
+    # async def reload_classes(self, ctx, term=None):
+    #     self._reload_classes(ctx, term)
 
 
     def get_subjects_for_term(self, term):
@@ -318,26 +319,19 @@ class UCLA(commands.Cog):
                 subjects_file.close()
                 return
 
-    async def send_message(self, ctx, message):
-        await ctx.send(message)
-
-    def _reload_classes(self, ctx=None, term=None):
+    def _reload_classes(self, term=None):
         # Load list of subjects parsed from UCLA website
-        # if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/subjects.json"):
-        self.get_subjects_for_term(term)
+        self.get_subjects_for_term(term or self.default_term)
 
-        f = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json")
+        f = open(self.data_dir.format(term=(term or self.default_term)) + "/subjects.json")
         self.subjectsJSON = json.load(f)
         f.close()
 
         class_name_dict = {}
 
         # we're sending command from discord channel, so force the reload goes through regardless of when last updated
-        if ctx:
-            # await ctx.send(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
-            self.send_message(ctx, "sfasf")
 
-        print(f"Reloading the {term} class names JSON (this may take a minute or 2)...")
+        print(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
         for n, subject in enumerate(self.subjectsJSON):
             pageNumber = 1
 
@@ -366,9 +360,6 @@ class UCLA(commands.Cog):
 
             class_name_dict[subject["value"].strip()] = all_classes
 
-        if ctx:
-            self.send_message(ctx, "sfasf")
-            # await ctx.send(f"Done reloading")
         print("Done reloading")
 
         class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
@@ -513,6 +504,10 @@ class UCLA(commands.Cog):
 
         return False
 
+
+    @commands.command(brief="Displays the default term")
+    async def default_term(self, ctx):
+        await ctx.send(f"The default term is {self.default_term}")
         
 
     async def _generate_class_view(self, ctx, subject: str, catalog=None, term=None, user_id=None, mode="slow", display_description=False, choices=False):
@@ -523,26 +518,26 @@ class UCLA(commands.Cog):
         warning_message = None
         include_300s = True
         await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog or 'N/A'}\nTerm: {term or 'N/A'}\nUser: {ctx.message.author.name}\n")
-        if not catalog:
-            warning_message = await ctx.send(f"Looking up all the classes in a subject entails looking up potentially strange classes like MATH 375, which has around 70 lectures.\nNeedless to say, that could take a while.")
-            while True:
-                status = await ctx.send(f"Should I include classes numbered above 300?")
-                await status.add_reaction(OK_EMOJI)
-                await status.add_reaction(NO_EMOJI)
+        # if not catalog:
+        #     warning_message = await ctx.send(f"Looking up all the classes in a subject entails looking up potentially strange classes like MATH 375, which has around 70 lectures.\nNeedless to say, that could take a while.")
+        #     while True:
+        #         status = await ctx.send(f"Should I include classes numbered above 300?")
+        #         await status.add_reaction(OK_EMOJI)
+        #         await status.add_reaction(NO_EMOJI)
 
-                try:
-                    r, _ = await self.bot.wait_for("reaction_add", timeout=TMPMSG_DEFAULT, check=lambda reaction, user: user == ctx.author and reaction.message.id == status.id)
-                except asyncio.TimeoutError:
-                    return
-                else:
-                    if r.emoji == NO_EMOJI:
-                        include_300s = False
-                    else:
-                        include_300s = True
+        #         try:
+        #             r, _ = await self.bot.wait_for("reaction_add", timeout=TMPMSG_DEFAULT, check=lambda reaction, user: user == ctx.author and reaction.message.id == status.id)
+        #         except asyncio.TimeoutError:
+        #             return
+        #         else:
+        #             if r.emoji == NO_EMOJI:
+        #                 include_300s = False
+        #             else:
+        #                 include_300s = True
 
-                    break
-            status.delete_message()
-            warning_message = await ctx.send(f"You're looking up {'all' if include_300s else 'most'} the classes in a subject, this might take a second to load...")
+        #             break
+        #     await status.delete()
+        warning_message = await ctx.send(f"You're looking up {'all' if include_300s else 'most'} the classes in a subject, this might take a second to load...")
         
         model_choices = self._search_for_class_model(subject, catalog, term)
 
@@ -551,15 +546,6 @@ class UCLA(commands.Cog):
             print(name_model_pair[1])
             htmls = htmls + self.check_class(name_model_pair)
 
-        if not include_300s:
-            def get_class_number(name):
-                my_catalog = name.split("-", 1)[0][:-1]
-                number = re.findall(r'\d+|$', my_catalog)[0]
-                try:
-                    return int(number)
-                except ValueError:
-                    return 0
-            htmls = [(name,soup) for name,soup in htmls if get_class_number(name) < 300]
 
         # I can't decide how this ought to be designed (idk anything about UX), but this is how it's gonna work:
         # there are two modes: slow and fast
@@ -645,6 +631,7 @@ class UCLA(commands.Cog):
 
 
     @commands.command(help="Search for a class in preparation to add to watch list")
+    @first_time()
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
@@ -715,7 +702,10 @@ class UCLA(commands.Cog):
             json.dump(json_object, a_file)
             a_file.close()
 
-    @commands.command(help="Search for a class in preparation to add to watch list")
+    @commands.command(
+        help="Display all classes under a given subject.\n Fast mode",
+        brief="Display all classes under a given subject."
+        )
     async def subject(self, ctx, *, args):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
@@ -737,22 +727,61 @@ class UCLA(commands.Cog):
             await ctx.send(f"You haven't looked up classes from {args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
-        try:
-            messages = await self._generate_class_view(ctx, subject, term=args["term"], user_id=user_id, mode=args["mode"], choices=False)
-        except KeyError:
-            await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
-            raise KeyError(f"Couldn't find subject {subject}")
-        
-        # check if we actually found any
-        if len(messages) == 0:
-            return
-        await ctx.send(f"These are all of the {subject} classes")
+        if args.get("deep"):
+            try:
+                messages = await self._generate_class_view(ctx, subject, term=args["term"], user_id=user_id, mode=args["mode"], choices=False)
+            except KeyError:
+                await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
+                raise KeyError(f"Couldn't find subject {subject}")
+            
+            # check if we actually found any
+            if len(messages) == 0:
+                return
+            await ctx.send(f"These are all of the {subject} classes offered in {args.get('term') or self.default_term}")
+        else:
+            term_to_search = args.get('term') or self.default_term
+            if term_to_search in self.current_terms:
+                f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
+                json_object = json.load(f)['class_names']
+                f.close()
+                if subject in json_object:
+                    all_classes = [my_class[0] for my_class in json_object[subject]]
+                    found = len(all_classes)
+                    status = await ctx.send(f"Gathering classes")
+                    idx = 0
+                    while True:
+                        preview = '\n'.join(all_classes[idx:idx+10])
+                        await status.edit(content=f"Here's entries {idx} through {idx+10}:\n{preview}")
+                        await status.add_reaction("⬅️")
+                        await status.add_reaction("➡️")
+                        try:
+                            r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author and r.message.id == status.id)
+                        except asyncio.TimeoutError:
+                            break
+                        else:
+                            if r.emoji == "⬅️":
+                                idx -= 10
+                            if r.emoji == "➡️":
+                                idx += 10
+                            if idx >= found or idx <= 0:
+                                idx = 0
+                            await status.clear_reaction("⬅️")
+                            await status.clear_reaction("➡️")
+                else:
+                    await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
+                    return
+            else:
+                await ctx.send(f"Sorry, {args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
+                return
+
+
 
 
 
 
 
     @commands.command(help="Display info about a class, including description")
+    @first_time()
     async def display_class(self, ctx, *, args):
         user_id = ctx.message.author.id
 
@@ -768,7 +797,7 @@ class UCLA(commands.Cog):
 
         user_id = ctx.message.author.id
 
-        json_object, messages = await self.see_classes(ctx, mode, choices=True)
+        json_object, messages = await self.see_watwhaiitst(ctx, mode, choices=True)
 
         if json_object is None:
             return
@@ -812,7 +841,8 @@ class UCLA(commands.Cog):
         # print(self._parse_class(soup))
 
     @commands.command(help="see classes you're keeping track of")
-    async def see_classes(self, ctx, mode="fast", choices=False):
+    @first_time()
+    async def see_watchlist(self, ctx, mode="fast", choices=False):
 
         user_id = ctx.message.author.id
         
@@ -907,11 +937,6 @@ class UCLA(commands.Cog):
     async def after_slow_count(self, ctx):
         await ctx.send("Stopped checking for classes")
 
-    @commands.command(help="I start the count")
-    @is_owner()
-    async def start_the_count(self, ctx):
-        self.check_for_change.start()
-        await self.bot.change_presence(status=discord.Status.online, activity=discord.Game("Updating"))
 
     @commands.command(help="Stop the count")
     @is_owner()
