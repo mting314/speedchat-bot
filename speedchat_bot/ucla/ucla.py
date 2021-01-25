@@ -250,6 +250,26 @@ class UCLA(commands.Cog):
 
         return embedVar
 
+    def _generate_all_embeds(self, htmls, display_description=False, choices=False, user_id=None):
+        """Generate all the embed from a list of htmls, and return a list will all of them"""
+        embed_list = []
+        for i,name_soup_pair in enumerate(htmls):
+            parsed_class = self._parse_class(name_soup_pair)
+
+            # if we want to display class description, get it from the class details page
+            if display_description:
+                r = requests.get(parsed_class["url"])
+                soup = BeautifulSoup(r.content, "lxml")
+                parsed_class['description'] = \
+                    soup.find("p", class_="class_detail_title", text="Course Description").findNext('p').contents[0]
+
+            # generate and display embed with appropriate letter choice if desired
+            generated_embed = self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"]))
+            embed_list.append(generated_embed)
+
+        return embed_list
+                
+
     async def _generate_image(self, browser, class_id, ctx, letter_choice=None):
         """Take a picture of a class id's details page, for sending in a slow mode"""
 
@@ -370,7 +390,6 @@ class UCLA(commands.Cog):
     def _parse_enrollment_status(self, my_string):
         """
         Go through the dictionary of enrollment regexes, return an enrollment dictionary
-        
         with count, capacity, etc numbers when the right match is found.
         """
 
@@ -493,6 +512,9 @@ class UCLA(commands.Cog):
     def _is_watching(self, user_id, class_id):
         """Checks if a user is tracking a certain class's id"""
 
+        if user_id is None:
+            return False
+
         watchlist = self._get_user_watchlist(user_id)
 
         if watchlist is None:
@@ -515,30 +537,10 @@ class UCLA(commands.Cog):
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
         on the resulting soups (from GetCourseSummary). Returns that a list that pairs the html with its associated message.
         """
-        warning_message = None
-        include_300s = True
-        await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog or 'N/A'}\nTerm: {term or 'N/A'}\nUser: {ctx.message.author.name}\n")
-        # if not catalog:
-        #     warning_message = await ctx.send(f"Looking up all the classes in a subject entails looking up potentially strange classes like MATH 375, which has around 70 lectures.\nNeedless to say, that could take a while.")
-        #     while True:
-        #         status = await ctx.send(f"Should I include classes numbered above 300?")
-        #         await status.add_reaction(OK_EMOJI)
-        #         await status.add_reaction(NO_EMOJI)
+        await ctx.send(f"Searching for\nSubject: {subject}\nCatalog: {catalog or 'N/A'}\nTerm: {term or self.default_term}\nUser: {ctx.message.author.name}\n")
+        user_id = ctx.message.author.id
 
-        #         try:
-        #             r, _ = await self.bot.wait_for("reaction_add", timeout=TMPMSG_DEFAULT, check=lambda reaction, user: user == ctx.author and reaction.message.id == status.id)
-        #         except asyncio.TimeoutError:
-        #             return
-        #         else:
-        #             if r.emoji == NO_EMOJI:
-        #                 include_300s = False
-        #             else:
-        #                 include_300s = True
 
-        #             break
-        #     await status.delete()
-        warning_message = await ctx.send(f"You're looking up {'all' if include_300s else 'most'} the classes in a subject, this might take a second to load...")
-        
         model_choices = self._search_for_class_model(subject, catalog, term)
 
         htmls = []
@@ -558,8 +560,6 @@ class UCLA(commands.Cog):
         # pros:
         # cons: Looks pretty ugly, quite a bit harder to read easily (especially picking out the important)
         # bits like enrollment status and instructor
-        if warning_message is not None:
-            await warning_message.delete()
 
         messages = []
         if mode == "slow":
@@ -575,18 +575,8 @@ class UCLA(commands.Cog):
             await browser.close()
 
         else:  # we're in fast mode
-            for i, name_soup_pair in enumerate(htmls):
-                parsed_class = self._parse_class(name_soup_pair)
-
-                # if we want to display class description, get it from the class details page
-                if display_description:
-                    r = requests.get(parsed_class["url"])
-                    soup = BeautifulSoup(r.content, "lxml")
-                    parsed_class['description'] = \
-                        soup.find("p", class_="class_detail_title", text="Course Description").findNext('p').contents[0]
-
-                # generate and display embed with appropriate letter choice if desired
-                generated_embed = self._generate_embed(parsed_class, letter_choice=chr(i + 65) if choices else None, watched=self._is_watching(user_id, parsed_class["class_id"]))
+            embed_list = self._generate_all_embeds(htmls, display_description=display_description, user_id=user_id)
+            for generated_embed in embed_list:
                 message = await ctx.channel.send(embed=generated_embed)
                 messages.append(message)
 
@@ -727,18 +717,21 @@ class UCLA(commands.Cog):
             await ctx.send(f"You haven't looked up classes from {args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
+        all_classes = []
         if args.get("deep"):
+            page_length = 5
             try:
-                messages = await self._generate_class_view(ctx, subject, term=args["term"], user_id=user_id, mode=args["mode"], choices=False)
+                warning_message = await ctx.send(f"You're looking up all the classes in a {subject}, this might take a second to load...")
+                all_classes = self._search_for_class_model(subject, catalog=None, term=args.get("term"))
+
+                await warning_message.delete()
             except KeyError:
                 await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
                 raise KeyError(f"Couldn't find subject {subject}")
             
-            # check if we actually found any
-            if len(messages) == 0:
-                return
-            await ctx.send(f"These are all of the {subject} classes offered in {args.get('term') or self.default_term}")
+
         else:
+            page_length = 10
             term_to_search = args.get('term') or self.default_term
             if term_to_search in self.current_terms:
                 f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
@@ -746,34 +739,69 @@ class UCLA(commands.Cog):
                 f.close()
                 if subject in json_object:
                     all_classes = [my_class[0] for my_class in json_object[subject]]
-                    found = len(all_classes)
-                    status = await ctx.send(f"Gathering classes")
-                    idx = 0
-                    while True:
-                        preview = '\n'.join(all_classes[idx:idx+10])
-                        await status.edit(content=f"Here's entries {idx} through {idx+10}:\n{preview}")
-                        await status.add_reaction("⬅️")
-                        await status.add_reaction("➡️")
-                        try:
-                            r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author and r.message.id == status.id)
-                        except asyncio.TimeoutError:
-                            break
-                        else:
-                            if r.emoji == "⬅️":
-                                idx -= 10
-                            if r.emoji == "➡️":
-                                idx += 10
-                            if idx >= found or idx <= 0:
-                                idx = 0
-                            await status.clear_reaction("⬅️")
-                            await status.clear_reaction("➡️")
-                else:
-                    await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
-                    return
+
             else:
                 await ctx.send(f"Sorry, {args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
                 return
 
+        found = len(all_classes)
+        # check if we actually found any
+        if found == 0:
+            return
+
+        status = await ctx.send(f"Gathering classes")
+        idx = 0
+        messages = []
+        htmls = []
+        while True:
+
+            await status.edit(content=f"Here's entries {idx} through {idx+page_length}:")
+            
+            preview = all_classes[idx:idx+page_length]
+            if type(all_classes[0]) == str:
+                # message = await ctx.send('\n'.join(preview))
+
+                messages.append(await ctx.send('\n'.join(preview)))
+            else:
+                
+                while len(htmls) <= 5:
+                    for name_model_pair in preview:
+                        print(name_model_pair[1])
+                        htmls = htmls + self.check_class(name_model_pair)
+
+                for i in range(5):
+                    name_soup_pair = htmls.pop(0)
+                    parsed_class = self._parse_class(name_soup_pair)
+
+                    # generate and display embed with appropriate letter choice if desired
+                    generated_embed = self._generate_embed(parsed_class, watched=self._is_watching(user_id, parsed_class["class_id"]))
+                    messages.append(await ctx.send(embed=generated_embed))
+
+            display_more = await ctx.send("display more?")
+
+
+            await display_more.add_reaction("⬅️")
+            await display_more.add_reaction("➡️")
+            try:
+                r, _ = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.author and r.message.id == display_more.id)
+            except asyncio.TimeoutError:
+                break
+            else:
+                if r.emoji == "⬅️":
+                    idx -= page_length
+                if r.emoji == "➡️":
+                    idx += page_length
+                if idx >= found or idx <= 0:
+                    idx = 0
+
+                # clear reactions and previous message
+                for message in messages:
+                    await message.delete()
+
+                messages = []
+                # await display_more.clear_reaction("⬅️")
+                # await display_more.clear_reaction("➡️")
+                await display_more.delete()
 
 
 
@@ -797,7 +825,7 @@ class UCLA(commands.Cog):
 
         user_id = ctx.message.author.id
 
-        json_object, messages = await self.see_watwhaiitst(ctx, mode, choices=True)
+        json_object, messages = await self.see_watchlist(ctx, mode, choices=True)
 
         if json_object is None:
             return
