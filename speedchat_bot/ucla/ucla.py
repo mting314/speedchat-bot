@@ -1,4 +1,5 @@
 from logging import warning
+from sys import executable
 import discord
 from discord.ext import tasks
 import json
@@ -150,6 +151,8 @@ class UCLA(commands.Cog):
 
         self.simple_parser = argparse.ArgumentParser()
         self.simple_parser.add_argument('--mode', dest='mode', default="fast")
+
+        self.EXEC_PATH = os.environ.get("GOOGLE_CHROME_SHIM", None)
 
 
     def _get_current_terms(self):
@@ -566,7 +569,7 @@ class UCLA(commands.Cog):
 
         messages = []
         if mode == "slow":
-            browser = await launch(headless=True, args=['--no-sandbox'])
+            browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
 
             for i, name_soup_pair in enumerate(htmls):
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the
@@ -885,7 +888,7 @@ class UCLA(commands.Cog):
                 messages.append(message)
 
         else:  # we're in the slow mode
-            browser = await launch(headless=True, args=['--no-sandbox'])
+            browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
             for n, my_class in enumerate(json_object):
                 message = await self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
                 messages.append(message)
