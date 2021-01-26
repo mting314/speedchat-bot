@@ -143,10 +143,13 @@ class UCLA(commands.Cog):
         self.check_for_change.start()
 
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('class_name', metavar='name', type=str, nargs='+', help='an integer for the accumulator')
+        self.parser.add_argument('class_name', metavar='name', type=str, nargs='+', help='whole class name, subject + catalog number')
         self.parser.add_argument('--mode', dest='mode', default="fast")
         self.parser.add_argument('--term', dest='term', default=None)
         self.parser.add_argument('--deep', action='store_true')
+
+        self.simple_parser = argparse.ArgumentParser()
+        self.simple_parser.add_argument('--mode', dest='mode', default="fast")
 
 
     def _get_current_terms(self):
@@ -527,7 +530,7 @@ class UCLA(commands.Cog):
         return False
 
 
-    @commands.command(brief="Displays the default term")
+    @commands.command(brief="Displays the default term", help="Displays the default term. This is the term that all commands default to when you don't provide a term argument.")
     async def default_term(self, ctx):
         await ctx.send(f"The default term is {self.default_term}")
         
@@ -563,7 +566,7 @@ class UCLA(commands.Cog):
 
         messages = []
         if mode == "slow":
-            browser = await launch()
+            browser = await launch(headless=True, args=['--no-sandbox'])
 
             for i, name_soup_pair in enumerate(htmls):
                 # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the
@@ -575,7 +578,7 @@ class UCLA(commands.Cog):
             await browser.close()
 
         else:  # we're in fast mode
-            embed_list = self._generate_all_embeds(htmls, display_description=display_description, user_id=user_id)
+            embed_list = self._generate_all_embeds(htmls, display_description=display_description, user_id=user_id, choices=choices)
             for generated_embed in embed_list:
                 message = await ctx.channel.send(embed=generated_embed)
                 messages.append(message)
@@ -587,9 +590,9 @@ class UCLA(commands.Cog):
     async def _present_choices(self, ctx, num_choices):
         """Given a (int) number of choices, send a message asking to choose one, with reactions for easy selecting"""
         emoji_choices = [chr(A_EMOJI_INT + n) for n in range(num_choices)]
-
+        status = await ctx.send(f"Choose the class you want keep an eye on/remove from your watchlist.")
         while True:
-            status = await ctx.send(f"Choose the class you want keep an eye on/remove from your watchlist.")
+            
             for emoji_choice in emoji_choices:
                 await status.add_reaction(emoji_choice)
             await status.add_reaction(NO_EMOJI)
@@ -620,7 +623,7 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(help="Search for a class in preparation to add to watch list")
+    @commands.command(brief="Search for a class in preparation to add to watch list.", help="Usage: ~search_class subject number [--mode] [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nSearch for a class in preparation to add to watch list.\n\nPresents all classes that match the class you queried, and present emoji reaction choices. Reacting with a certain emoji will add the corresponding class to your watchlist.")
     @first_time()
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
@@ -628,7 +631,7 @@ class UCLA(commands.Cog):
 
         args = vars(self.parser.parse_args(args.split()))
 
-        catalog = args["class_name"].pop()
+        catalog = args["class_name"].pop().upper()
 
         subject = ' '.join(args["class_name"]).upper()
 
@@ -798,24 +801,24 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(help="Display info about a class, including description")
+    @commands.command(brief="Display info about a class, including description", help="Usage: ~display_class subject number [--mode] [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nDisplay info about a class, including description.\n\nSame as ~search_class, but displays course description and not providing option to add to watchlist.")
     @first_time()
     async def display_class(self, ctx, *, args):
         user_id = ctx.message.author.id
 
         args = vars(self.parser.parse_args(args.split()))
-        catalog = args["class_name"].pop()
+        catalog = args["class_name"].pop().upper()
         subject = ' '.join(args["class_name"]).upper()
 
 
         htmls = await self._generate_class_view(ctx, subject, catalog, args.get("term"), user_id, args["mode"], display_description=True)
 
-    @commands.command(help="Choose a class to remove from watchlist.")
-    async def remove_class(self, ctx, mode="fast"):
+    @commands.command(brief="Choose a class to remove from watchlist.", help="Usage: ~remove_class [--mode]\n\\n\nmust be 'fast' or 'slow'. \nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nnChoose a class to remove from watchlist. Calling this command will present each class with choice reaction emojis; choose the emoji corresponding with a certain class to remove it from your watchlist, and stop getting notifications from it.")
+    async def remove_class(self, ctx, *, args):
 
         user_id = ctx.message.author.id
-
-        json_object, messages = await self.see_watchlist(ctx, mode, choices=True)
+        args = vars(self.simple_parser.parse_args(args.split()))   
+        json_object, messages = await self.see_watchlist(ctx, mode=args.get("mode"), choices=True)
 
         if json_object is None:
             return
@@ -858,10 +861,10 @@ class UCLA(commands.Cog):
 
     @commands.command(brief="See classes you're keeping track of.", help="Usage: ~see_watchlist [--mode]\nmode: must be 'fast' or 'slow'. \nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nSee classes you're keeping track of.")
     @first_time()
-    async def see_watchlist(self, ctx, mode="fast", choices=False):
+    async def see_watchlist(self, ctx, *, args, choices=False):
 
         user_id = ctx.message.author.id
-        
+        args = vars(self.simple_parser.parse_args(args.split()))
         json_object = self._get_user_watchlist(user_id)
 
         if json_object is None or len(json_object) == 0:
@@ -871,7 +874,7 @@ class UCLA(commands.Cog):
 
         messages = []
 
-        if mode == "fast":
+        if args.get("mode") == "fast":
             for n, my_class in enumerate(json_object):
                 # get class from public url
                 params = {'t': my_class["term"], 'sBy': 'classidnumber', 'id': my_class['class_id']}
@@ -882,9 +885,9 @@ class UCLA(commands.Cog):
                 messages.append(message)
 
         else:  # we're in the slow mode
-            browser = await launch()
+            browser = await launch(headless=True, args=['--no-sandbox'])
             for n, my_class in enumerate(json_object):
-                message = self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
+                message = await self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
                 messages.append(message)
             await browser.close()
         
