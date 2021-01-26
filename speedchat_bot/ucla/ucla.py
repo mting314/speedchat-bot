@@ -300,7 +300,7 @@ class UCLA(commands.Cog):
 
         return message
 
-    @commands.command()
+    @commands.command(help="Change the default term for searching. It is written, only coolguy5530 can use this command.", brief="Only used by creator.")
     @is_owner()
     async def switch_term(self, ctx, new_term: str):
         # First, is this the right format?
@@ -696,6 +696,7 @@ class UCLA(commands.Cog):
         help="Display all classes under a given subject.\n Fast mode",
         brief="Display all classes under a given subject."
         )
+    @first_time()
     async def subject(self, ctx, *, args):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
@@ -722,8 +723,13 @@ class UCLA(commands.Cog):
             page_length = 5
             try:
                 warning_message = await ctx.send(f"You're looking up all the classes in a {subject}, this might take a second to load...")
-                all_classes = self._search_for_class_model(subject, catalog=None, term=args.get("term"))
+                class_models = self._search_for_class_model(subject, catalog=None, term=args.get("term"))
+                htmls = []
+                for name_model_pair in class_models:
+                    print(name_model_pair[1])
+                    htmls = htmls + self.check_class(name_model_pair)
 
+                all_classes = self._generate_all_embeds(htmls, user_id=user_id)
                 await warning_message.delete()
             except KeyError:
                 await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
@@ -739,7 +745,6 @@ class UCLA(commands.Cog):
                 f.close()
                 if subject in json_object:
                     all_classes = [my_class[0] for my_class in json_object[subject]]
-
             else:
                 await ctx.send(f"Sorry, {args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
                 return
@@ -759,25 +764,12 @@ class UCLA(commands.Cog):
             
             preview = all_classes[idx:idx+page_length]
             if type(all_classes[0]) == str:
-                # message = await ctx.send('\n'.join(preview))
-
                 messages.append(await ctx.send('\n'.join(preview)))
             else:
-                
-                while len(htmls) <= 5:
-                    for name_model_pair in preview:
-                        print(name_model_pair[1])
-                        htmls = htmls + self.check_class(name_model_pair)
-
-                for i in range(5):
-                    name_soup_pair = htmls.pop(0)
-                    parsed_class = self._parse_class(name_soup_pair)
-
-                    # generate and display embed with appropriate letter choice if desired
-                    generated_embed = self._generate_embed(parsed_class, watched=self._is_watching(user_id, parsed_class["class_id"]))
+                for generated_embed in preview:
                     messages.append(await ctx.send(embed=generated_embed))
 
-            display_more = await ctx.send("display more?")
+            display_more = await ctx.send("Display more?")
 
 
             await display_more.add_reaction("⬅️")
@@ -799,8 +791,6 @@ class UCLA(commands.Cog):
                     await message.delete()
 
                 messages = []
-                # await display_more.clear_reaction("⬅️")
-                # await display_more.clear_reaction("➡️")
                 await display_more.delete()
 
 
@@ -860,15 +850,13 @@ class UCLA(commands.Cog):
         params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769'}
 
         final_url = _generate_url(self.GET_COURSE_SUMMARY_URL, params)
-        # print(final_url)
         r = requests.get(final_url, headers=HEADERS)
 
         soup = BeautifulSoup(r.content, features="lxml")
-        found_list = [(name, html) for html in soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")]
         return [(name, html) for html in soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")]
         # print(self._parse_class(soup))
 
-    @commands.command(help="see classes you're keeping track of")
+    @commands.command(brief="See classes you're keeping track of.", help="Usage: ~see_watchlist [--mode]\nmode: must be 'fast' or 'slow'. \nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nSee classes you're keeping track of.")
     @first_time()
     async def see_watchlist(self, ctx, mode="fast", choices=False):
 
@@ -905,7 +893,7 @@ class UCLA(commands.Cog):
         return json_object, messages
 
 
-    @commands.command(help='Clear classes a user\'s "to watch" list')
+    @commands.command(brief='Clear classes a user\'s "to watch" list', help='Clears classes from a user\'s "to watch" list, if you have added classes to it. This means you\'ll stop recieving notifications.')
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
 
@@ -966,7 +954,7 @@ class UCLA(commands.Cog):
         await ctx.send("Stopped checking for classes")
 
 
-    @commands.command(help="Stop the count")
+    @commands.command(brief="Only used by creator.", help="Stop checking for changes in users' watchlists. It is written, only coolguy5530 can use this command.")
     @is_owner()
     async def stop_the_count(self, ctx):
         self.check_for_change.stop()
