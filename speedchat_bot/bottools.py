@@ -59,16 +59,22 @@ class BotTools(commands.Cog):
 
 
 
-        embedVar.add_field(name="Overview", value="Allows you to easily look up UCLA classes by name and term. You can also add as many classes as you want to a **watchlist**, where you'll be DM'ed by this bot every time the enrollment status of a class listed there changes.", inline=False)
-        embedVar.add_field(name="~display_class", value="```\n~display_class MATH 131A --term 21W --mode fast``` Displays all offerings of a class with that name along with lots of helpful info about it (meeting times, professor, enrollment numbers, etc.) Make sure to use the subject name abbreviation as it appears on the Class Planner, i.e. MATH or COM SCI or C&S BIO. Term is in the format 20F/21W/21S.\nMode can be `fast` or `slow`. The order in which you provide term and mode doesn't matter.", inline=False)
-        embedVar.add_field(name="~subject", value="```\n~subject JAPAN [--term] [--mode]``` Displays *all* classes under provided subject. Will ask you if you want to display classes above 300s because those classes are weird.", inline=False)
+        embedVar.add_field(name="Overview", value="Allows you to easily look up UCLA classes by name and term. You can also add as many classes as you want to a **watchlist**, where you'll be DM'ed by this bot every time the enrollment status of a class listed there changes.\n\nTry running the follow example functions.", inline=False)
         
-        embedVar.add_field(name="~search_class", value="```\n~search_class COM SCI 35L [--term] [--mode]``` Same usage and mostly same appearance as `display_class`. However, at the end, you will be presented with choice reaction emojis. Choose a reaction to have the corresponding class added to your watchlist.", inline=False)
-        embedVar.add_field(name="~see_watchlist", value="```\n~see_watchlist``` Displays all classes in your (message author's) watchlist.", inline=False)
-        embedVar.add_field(name="~remove_class", value="```\n~remove_classes``` Displays all classes in your (message author's) watchlist, and then presents similar reaction choices to `search_class`. Choose the appropriate reaction to remove that class from your watchlist.", inline=False)
-        embedVar.add_field(name="~clear_classes", value="```\n~remove_classes``` Removes all classes from your (message author's) watchlist.", inline=False)
+        
+        embedVar.add_field(name="~display_class", value="```\n~display_class COM SCI 35L```", inline=False)
+        embedVar.add_field(name="~subject",       value="```\n~subject JAPAN --term 20F```", inline=False)
+        embedVar.add_field(name="~search_class",  value="```\n~search_class Math 142 --term 21S```", inline=False)
+        
+        # this forces next fields onto new line
+        # embedVar.add_field(name = chr(173), value = chr(173))
+
+        embedVar.add_field(name="~see_watchlist", value="```\n~see_watchlist```", inline=False)
+        embedVar.add_field(name="~remove_class",  value="```\n~remove_classes```", inline=True)
+        embedVar.add_field(name="~clear_classes", value="```\n~clear_classes```", inline=True)
+        embedVar.add_field(name="Help!", value="You can always run `~help` for an overview of every command available, and `help commandname` for more detailed info on a particular command.", inline=False)
         # TODO: upload image to pic serves to use here, can use local file
-        # embedVar.set_image(url="https://discordapp.com/assets/e4923594e694a21542a489471ecffa50.svg")
-        
+        embedVar.set_image(url="https://raw.githubusercontent.com/mting314/speedchat-bot/main/images/search.png?token=ANTHQXS3D3JFNOAJDDAHUN3ACESSQ")
+        embedVar.set_footer(text="Bottom Text.")
         
         await ctx.send(embed=embedVar)

@@ -634,7 +634,7 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(brief="Search for a class in preparation to add to watch list.", help="Usage: ~search_class subject number [--term]\n\nExample: ~search_class AN N EA 10W --term 21S\n\nExample: ~search_class AERO ST A\n(In this case, AERO ST is the subject, and A is the catalog \"number\")\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nSearch for a class in preparation to add to watch list.\n\nPresents all classes that match the class you queried, and present emoji reaction choices. Reacting with a certain emoji will add the corresponding class to your watchlist.")
+    @commands.command(brief="Search for a class in preparation to add to watch list.", help="Usage: ~search_class subject number [--term]\n\nExample: ~search_class AN N EA 10W --term 21S\n\nExample: ~search_class AERO ST A\n(In this case, AERO ST is the subject, and A is the catalog \"number\")\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\n\nSearch for a class in preparation to add to watch list.\n\nPresents all classes that match the class you queried, and present emoji reaction choices. Reacting with a certain emoji will add the corresponding class to your watchlist.")
     @first_time()
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
@@ -817,7 +817,7 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(brief="Display info about a class, including description", help="Usage: ~display_class subject number [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S. If not provided, defaults to whatever ~default_term says.\n\nSame as ~search_class, but displays course description and not providing option to add to watchlist.")
+    @commands.command(brief="Display info about a class, including description", help="Usage: ~display_class subject number [--term]\n\nExample: ~display_class math 142 --term 20W\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S. If not provided, defaults to whatever ~default_term says.\n\nSame as ~search_class, but displays course description and not providing option to add to watchlist.")
     @first_time()
     async def display_class(self, ctx, *, args):
         user_id = ctx.message.author.id
@@ -842,9 +842,8 @@ class UCLA(commands.Cog):
             return
 
         htmls = await self._generate_class_view(ctx, subject, catalog, term=my_args.get("term"), user_id=user_id, display_description=True)
-        if len(htmls) == 0:
-            await ctx.send("Sorry, I can't find that class.")
-
+        if len(htmls) != 0:
+            await ctx.send(f"These are the classes I found for {subject} {catalog} in {my_args.get('term')}.")
     @commands.command(brief="Choose a class to remove from watchlist.", help="Usage: ~remove_class\n\nChoose a class to remove from watchlist. Calling this command will present each class with choice reaction emojis; choose the emoji corresponding with a certain class to remove it from your watchlist, and stop getting notifications from it.")
     async def remove_class(self, ctx):
 
