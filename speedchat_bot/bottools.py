@@ -46,12 +46,8 @@ class BotTools(commands.Cog):
         msg = [m.content async for m in (user.dm_channel or await user.create_dm()).history()]
         await portal.edit(content=f"Got some messages: {msg}", delete_after=TMPMSG_DEFAULT)
 
-    # count messages
-    @commands.command(help="Count messages matching a regex")
-    async def about(self, ctx):
+    def about_message(self):
         """Build a Discord Embed message to introduce """
-
-        #TODO: Split this into help for each command?
 
         title = 'Welcome to Toontown!'
 
@@ -77,4 +73,13 @@ class BotTools(commands.Cog):
         embedVar.set_image(url="https://raw.githubusercontent.com/mting314/speedchat-bot/main/images/search.png?token=ANTHQXQUF7ML5QV2BTMNNP3ACHLSU")
         embedVar.set_footer(text="Bottom Text. You can message me at coolguy5530#7055 if you are stuck or find issues.")
         
-        await ctx.send(embed=embedVar)
+        return embedVar
+
+    # count messages
+    @commands.command(help="Count messages matching a regex")
+    async def about(self, ctx):
+
+        #TODO: Split this into help for each command?
+
+        
+        await ctx.send(embed=self.about_message())

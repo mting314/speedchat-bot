@@ -40,11 +40,18 @@ async def on_ready():
 
 
 # cog setup
-cli.add_cog(BotTools(cli))
+my_bottools = BotTools(cli)
+cli.add_cog(my_bottools)
 cli.add_cog(Japanese(cli))
 cli.add_cog(Speedchat(cli))
 cli.add_cog(UCLA(cli))
 
+@cli.event
+async def on_guild_join(guild):
+    for channel in guild.text_channels:
+        if channel.permissions_for(guild.me).send_messages:
+            await channel.send(embed=my_bottools.about_message())
+        break
 
 if __name__ == "__main__":
     # bind for Heroku
