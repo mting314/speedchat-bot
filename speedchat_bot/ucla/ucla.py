@@ -14,7 +14,7 @@ import shutil
 import time
 
 import asyncio
-from pyppeteer import launch
+# from pyppeteer import launch
 
 from constants import *
 from perms import *
