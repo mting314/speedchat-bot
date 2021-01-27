@@ -742,7 +742,7 @@ class UCLA(commands.Cog):
             page_length = 5
             try:
                 warning_message = await ctx.send(f"You're looking up all the classes in a {subject}, this might take a second to load...")
-                class_models = self._search_for_class_model(subject, catalog=None, term=args.get("term"))
+                class_models = self._search_for_class_model(subject, catalog=None, term=my_args.get("term"))
                 htmls = []
                 for name_model_pair in class_models:
                     print(name_model_pair[1])
