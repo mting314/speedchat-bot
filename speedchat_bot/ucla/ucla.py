@@ -896,14 +896,7 @@ class UCLA(commands.Cog):
     async def see_watchlist(self, ctx, choices=False):
 
         user_id = ctx.message.author.id
-        # if args:
-        #     try:
-        #         my_args = vars(self.simple_parser.parse_args(args.split()))
-        #     except SystemExit:
-        #         await ctx.send(f"Mode could not be interpreted, assuming fast mode.")
-        #         my_args = {"mode": "fast"}
-        # else:
-        #     my_args = {"mode": "fast"}
+
         json_object = self._get_user_watchlist(user_id)
 
         if json_object is None or len(json_object) == 0:
@@ -1005,8 +998,8 @@ class UCLA(commands.Cog):
     
 
     @check_for_change.after_loop
-    async def after_slow_count(self, ctx):
-        await ctx.send("Stopped checking for classes")
+    async def after_slow_count(self):
+        print("stopped looking for classes")
 
 
     @commands.command(brief="Only used by creator.", help="Stop checking for changes in users' watchlists. It is written, only coolguy5530 can use this command.")

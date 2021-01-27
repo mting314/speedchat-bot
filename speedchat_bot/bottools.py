@@ -75,6 +75,6 @@ class BotTools(commands.Cog):
         embedVar.add_field(name="Help!", value="You can always run `~help` for an overview of every command available, and `help commandname` for more detailed info on a particular command.", inline=False)
         # TODO: upload image to pic serves to use here, can use local file
         embedVar.set_image(url="https://raw.githubusercontent.com/mting314/speedchat-bot/main/images/search.png?token=ANTHQXS3D3JFNOAJDDAHUN3ACESSQ")
-        embedVar.set_footer(text="Bottom Text.")
+        embedVar.set_footer(text="Bottom Text. You can message me at coolguy5530#7055 if you are stuck or find issues.")
         
         await ctx.send(embed=embedVar)
