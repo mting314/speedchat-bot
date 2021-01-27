@@ -214,7 +214,7 @@ class UCLA(commands.Cog):
                     # Plus, if someone doesn't get the human name right, I think that's on them
                     # BUT WHAT IF SPACE IN CATALOG NUMBER
                     class_name = div.select_one('a[id$="-title"]').text
-                    if class_name.split("-", 1)[0][:-1] == catalog:
+                    if catalog is None or class_name.split("-", 1)[0][:-1] == catalog:
                         class_list.append(  (div.select_one('a[id$="-title"]').text,  model_regex.search(script.decode_contents())[1]) )
                 # when we get past all the result pages, we'll get nothing from requests.get
                 if r.content == b'':
