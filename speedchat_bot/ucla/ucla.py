@@ -20,7 +20,8 @@ from constants import *
 from perms import *
 
 # Assumptions: class number is always either 001,002, etc., or '%'
-regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"Term":"%s".*?"ClassNumber":" *?[\d%%]{1,3} *.*?"Path":"[\d_]*?%s[\d]{0,3}".*?"Token":".*?"})\);'
+# regex = 'Iwe_ClassSearch_SearchResults.AddToCourseData\("[\d_]*?%s[\d]{0,3}",({"Term":"%s".*?"ClassNumber":" *?[\d%%]{1,3} *.*?"Path":"[\d_]*?%s[\d]{0,3}".*?"Token":".*?"})\);'
+model_regex = re.compile('Iwe_ClassSearch_SearchResults.AddToCourseData\(.*?({.*?})')
 HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 filter_flags = '{"enrollment_status":"O,W,C,X,T,S","advanced":"y","meet_days":"M,T,W,R,F","start_time":"8:00 am","end_time":"7:00 pm","meet_locations":null,"meet_units":null,"instructor":null,"class_career":null,"impacted":null,"enrollment_restrictions":null,"enforced_requisites":null,"individual_studies":null,"summer_session":null}'
 
@@ -137,7 +138,7 @@ class UCLA(commands.Cog):
         self.COURSE_TITLES_VIEW     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
         self.COURSE_TITLES_PAGE     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
 
-        self.default_term = "21W"
+        self.default_term = "21S"
         self.data_dir = "speedchat_bot/ucla_data/{term}"
 
         self.daily_reload.start()
@@ -145,12 +146,12 @@ class UCLA(commands.Cog):
 
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument('class_name', metavar='name', type=str, nargs='+', help='whole class name, subject + catalog number')
-        self.parser.add_argument('--mode', dest='mode', default="fast")
-        self.parser.add_argument('--term', dest='term', default=None)
+        # self.parser.add_argument('--mode', dest='mode', default="fast")
+        self.parser.add_argument('--term', dest='term', default=self.default_term)
         self.parser.add_argument('--deep', action='store_true')
 
-        self.simple_parser = argparse.ArgumentParser()
-        self.simple_parser.add_argument('--mode', dest='mode', default="fast")
+        # self.simple_parser = argparse.ArgumentParser()
+        # self.simple_parser.add_argument('--mode', dest='mode', default="fast")
 
         self.EXEC_PATH = os.environ.get("GOOGLE_CHROME_SHIM", None)
 
@@ -214,7 +215,7 @@ class UCLA(commands.Cog):
                     # BUT WHAT IF SPACE IN CATALOG NUMBER
                     class_name = div.select_one('a[id$="-title"]').text
                     if class_name.split("-", 1)[0][:-1] == catalog:
-                        class_list.append(  (div.select_one('a[id$="-title"]').text,  re.search("({.*?})", script.decode_contents())[1]) )
+                        class_list.append(  (div.select_one('a[id$="-title"]').text,  model_regex.search(script.decode_contents())[1]) )
                 # when we get past all the result pages, we'll get nothing from requests.get
                 if r.content == b'':
                     break
@@ -226,7 +227,7 @@ class UCLA(commands.Cog):
 
 
     def _generate_embed(self, parsed_class, letter_choice=None, watched=False):
-        """Build a Discord Embed message based on a class dictionary, for sending in a fast mode"""
+        """Build a Discord Embed message based on a class dictionary"""
         title = '{choice} {class_name}{in_list}'.format(choice=f"(Choice {letter_choice})" if letter_choice else '',
                                                class_name=parsed_class["class_name"], in_list=" (in your watchlist)" if watched else '')
 
@@ -377,7 +378,7 @@ class UCLA(commands.Cog):
                     # I can't guarantee that there isn't some wack scenario where there are two classes
                     # names exactly the same, make each name+model pair like a tuple instead
                     all_classes.append(
-                        [div.select_one('a[id$="-title"]').text, re.search("Iwe_ClassSearch_SearchResults.AddToCourseData\(.*?({.*?})", script.decode_contents())[1]])
+                        [div.select_one('a[id$="-title"]').text, model_regex.search(script.decode_contents())[1]])
                 # when we get past all the result pages, we'll get nothing from requests.get
                 if r.content == b'':
                     break
@@ -457,8 +458,17 @@ class UCLA(commands.Cog):
             name = name_soup_pair[0]
             soup = name_soup_pair[1]
         else:  # we sent to this function soup from the public records page, which has name info on it
-            name = name_soup_pair.select_one("a[id$=-title]").text
             soup = name_soup_pair
+        
+        details_url = "https://sa.ucla.edu" + soup.select_one('a[title^="Class Detail for "]')['href']
+        section_name = soup.select_one('a[title^="Class Detail for "]').text
+        details_url_parts = dict(urlparse.parse_qsl(list(urlparse.urlparse(details_url))[4]))
+
+        subject = details_url_parts['subj_area_cd'].strip()
+
+        if type(name_soup_pair) is not tuple:
+            name = f'{subject} {name_soup_pair.select_one("a[id$=-title]").text}'
+
         enrollment_data = soup.select_one("div[id$=-status_data]").text
         waitlist_data = soup.select_one("div[id$=-waitlist_data]").text.replace("\n", '')
 
@@ -472,12 +482,10 @@ class UCLA(commands.Cog):
         # could be wrong...
         units = soup.select_one("div[id$=-units_data] p").text
 
-        details_url = "https://sa.ucla.edu" + soup.select_one('a[title^="Class Detail for "]')['href']
-        section_name = soup.select_one('a[title^="Class Detail for "]').text
-        details_url_parts = dict(urlparse.parse_qsl(list(urlparse.urlparse(details_url))[4]))
+
 
         class_dict = {
-            "subject":         details_url_parts['subj_area_cd'].strip(),
+            "subject":         subject,
             "class_no":        details_url_parts['class_no'].strip(),
             "class_id":        parse_class_id(str(soup)),
             "class_name":      name,
@@ -538,7 +546,7 @@ class UCLA(commands.Cog):
         await ctx.send(f"The default term is {self.default_term}")
         
 
-    async def _generate_class_view(self, ctx, subject: str, catalog=None, term=None, user_id=None, mode="slow", display_description=False, choices=False):
+    async def _generate_class_view(self, ctx, subject: str, catalog=None, term=None, user_id=None, mode="fast", display_description=False, choices=False):
         """
         Given the lookup info of subject+catalog (i.e. MATH+151AH), send either embeds or images based
         on the resulting soups (from GetCourseSummary). Returns that a list that pairs the html with its associated message.
@@ -587,7 +595,7 @@ class UCLA(commands.Cog):
                 messages.append(message)
 
         if len(htmls) == 0:
-            await ctx.channel.send("Sorry, I couldn't find that class.")
+            await ctx.channel.send(f"Sorry, I couldn't find that class. (Can't find the class you're looking for? Try using ~subject {subject} to see all classes under {subject}.")
         return list(zip(htmls, messages))
 
     async def _present_choices(self, ctx, num_choices):
@@ -626,33 +634,36 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(brief="Search for a class in preparation to add to watch list.", help="Usage: ~search_class subject number [--mode] [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nSearch for a class in preparation to add to watch list.\n\nPresents all classes that match the class you queried, and present emoji reaction choices. Reacting with a certain emoji will add the corresponding class to your watchlist.")
+    @commands.command(brief="Search for a class in preparation to add to watch list.", help="Usage: ~search_class subject number [--term]\n\nExample: ~search_class AN N EA 10W --term 21S\n\nExample: ~search_class AERO ST A\n(In this case, AERO ST is the subject, and A is the catalog \"number\")\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nSearch for a class in preparation to add to watch list.\n\nPresents all classes that match the class you queried, and present emoji reaction choices. Reacting with a certain emoji will add the corresponding class to your watchlist.")
     @first_time()
     async def search_class(self, ctx, *, args):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
-
-        args = vars(self.parser.parse_args(args.split()))
-
-        catalog = args["class_name"].pop().upper()
-
-        subject = ' '.join(args["class_name"]).upper()
-
-
-        if args.get("term") and not validate_term(args["term"]):
-            await ctx.send(f"{args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
+        try:
+            my_args = vars(self.parser.parse_args(args.split()))
+        except SystemExit:
+            await ctx.send("Sorry, I can't parse that.")
             return
 
-        if args.get("mode") and args["mode"] not in ["fast", "slow"]:
-            await ctx.send(f"The mode must be fast or slow, I saw {args['mode']}")
+        catalog = my_args["class_name"].pop().upper()
+
+        subject = ' '.join(my_args["class_name"]).upper()
+
+
+        if my_args.get("term") and not validate_term(my_args["term"]):
+            await ctx.send(f"{my_args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
             return
 
-        if not os.path.exists(self.data_dir.format(term=args.get("term") or self.default_term) + "/class_names.json"):
-            await ctx.send(f"You haven't looked up classes from {args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
+        if not subject:
+            await ctx.send("Sorry, I can't parse that. Did you remember to provide a catalog number?")
+            return
+
+        if not os.path.exists(self.data_dir.format(term=my_args.get("term") or self.default_term) + "/class_names.json"):
+            await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
         try:
-            messages = await self._generate_class_view(ctx, subject, catalog, args["term"], user_id, args["mode"], choices=True)
+            messages = await self._generate_class_view(ctx, subject, catalog, term=my_args["term"], user_id=user_id, choices=True)
         except KeyError:
             await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
             raise KeyError(f"Couldn't find subject {subject}")
@@ -665,8 +676,8 @@ class UCLA(commands.Cog):
         choice_index = await self._present_choices(ctx, len(messages))
 
         # Warning if term is really long ago
-        if args.get("term") not in self.current_terms:
-            await ctx.send(f"{args.get('term')} doesn't seem to be relevant right now. Are you sure you want to track a class from that term?")
+        if my_args.get("term") not in self.current_terms:
+            await ctx.send(f"Warning: {my_args.get('term')} doesn't seem to be relevant right now. Are you sure you want to track a class from that term?")
         # And add that selection to their watchlist
         if choice_index is not None:
             name_soup_pair, _ = messages.pop(choice_index)
@@ -687,9 +698,11 @@ class UCLA(commands.Cog):
                     return
 
             # write class_id, *current* enrollment_status, and a name to the json
+            enrollment_data = name_soup_pair[1].select_one("div[id$=-status_data]").text
+            enrollment_dict = self._parse_enrollment_status(enrollment_data)
             json_object.append({
                 "class_id": parsed_class['class_id'],
-                "enrollment_data": name_soup_pair[1].select_one("div[id$=-status_data]").text,
+                "enrollment_status": enrollment_dict['enrollment_status'],
                 "class_name": name_soup_pair[0],
                 "term": parsed_class["term"],
             })
@@ -699,7 +712,7 @@ class UCLA(commands.Cog):
             a_file.close()
 
     @commands.command(
-        help="Display all classes under a given subject.\n Fast mode",
+        help="Display all classes under a given subject.\n\nUsage: ~subject subject_name [--deep]\n\nExample: ~subject COM SCI --deep \n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\ndeep: if the --deep flag is provided, displays embeds for all the classes. Because it has to retrieve all info like instructors, enrollment data, etc., it takes a while to load all classes.\n\nDisplays all classes under a subject, one page at a time. Use the emoji reactions to scroll through pages.",
         brief="Display all classes under a given subject."
         )
     @first_time()
@@ -707,25 +720,25 @@ class UCLA(commands.Cog):
         # PARSE ARGUMENTS
         user_id = ctx.message.author.id
 
-        args = vars(self.parser.parse_args(args.split()))
+        try:
+            my_args = vars(self.parser.parse_args(args.split()))
+        except SystemExit:
+            await ctx.send("Sorry, I can't parse that.")
+            return
 
-        subject = ' '.join(args["class_name"]).upper()
+        subject = ' '.join(my_args["class_name"]).upper()
 
         
-        if args.get("term") and not validate_term(args["term"]):
-            await ctx.send(f"{args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
+        if my_args.get("term") and not validate_term(my_args["term"]):
+            await ctx.send(f"{my_args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
             return
 
-        if args.get("mode") and args["mode"] not in ["fast", "slow"]:
-            await ctx.send(f"The mode must be fast or slow, I saw {args['mode']}")
-            return
-
-        if not os.path.exists(self.data_dir.format(term=args.get("term") or self.default_term) + "/class_names.json"):
-            await ctx.send(f"You haven't looked up classes from {args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
+        if not os.path.exists(self.data_dir.format(term=my_args.get("term") or self.default_term) + "/class_names.json"):
+            await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
         all_classes = []
-        if args.get("deep"):
+        if my_args.get("deep"):
             page_length = 5
             try:
                 warning_message = await ctx.send(f"You're looking up all the classes in a {subject}, this might take a second to load...")
@@ -744,7 +757,7 @@ class UCLA(commands.Cog):
 
         else:
             page_length = 10
-            term_to_search = args.get('term') or self.default_term
+            term_to_search = my_args.get('term') or self.default_term
             if term_to_search in self.current_terms:
                 f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
                 json_object = json.load(f)['class_names']
@@ -752,7 +765,7 @@ class UCLA(commands.Cog):
                 if subject in json_object:
                     all_classes = [my_class[0] for my_class in json_object[subject]]
             else:
-                await ctx.send(f"Sorry, {args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
+                await ctx.send(f"Sorry, {my_args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
                 return
 
         found = len(all_classes)
@@ -804,24 +817,41 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(brief="Display info about a class, including description", help="Usage: ~display_class subject number [--mode] [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S.\nmode: Optional parameter, must be 'fast' or 'slow'.\n\nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nDisplay info about a class, including description.\n\nSame as ~search_class, but displays course description and not providing option to add to watchlist.")
+    @commands.command(brief="Display info about a class, including description", help="Usage: ~display_class subject number [--term]\n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\nnumber: The class number, i.e. 151A or M120 or A. No spaces.\nterm: Which term to search for the class in. Must be formatted like 20F/21W/21S. If not provided, defaults to whatever ~default_term says.\n\nSame as ~search_class, but displays course description and not providing option to add to watchlist.")
     @first_time()
     async def display_class(self, ctx, *, args):
         user_id = ctx.message.author.id
 
-        args = vars(self.parser.parse_args(args.split()))
-        catalog = args["class_name"].pop().upper()
-        subject = ' '.join(args["class_name"]).upper()
+        try:
+            my_args = vars(self.parser.parse_args(args.split()))
+        except SystemExit:
+            await ctx.send("Sorry, I can't parse that.")
+            return
 
 
-        htmls = await self._generate_class_view(ctx, subject, catalog, args.get("term"), user_id, args["mode"], display_description=True)
 
-    @commands.command(brief="Choose a class to remove from watchlist.", help="Usage: ~remove_class [--mode]\n\\n\nmust be 'fast' or 'slow'. \nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nnChoose a class to remove from watchlist. Calling this command will present each class with choice reaction emojis; choose the emoji corresponding with a certain class to remove it from your watchlist, and stop getting notifications from it.")
-    async def remove_class(self, ctx, *, args):
+        catalog = my_args["class_name"].pop().upper()
+        subject = ' '.join(my_args["class_name"]).upper()
+
+        if not subject:
+            await ctx.send("Sorry, I can't parse that.")
+            return
+
+        if my_args.get("term") and not validate_term(my_args["term"]):
+            await ctx.send(f"{my_args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
+            return
+
+        htmls = await self._generate_class_view(ctx, subject, catalog, term=my_args.get("term"), user_id=user_id, display_description=True)
+        if len(htmls) == 0:
+            await ctx.send("Sorry, I can't find that class.")
+
+    @commands.command(brief="Choose a class to remove from watchlist.", help="Usage: ~remove_class\n\nChoose a class to remove from watchlist. Calling this command will present each class with choice reaction emojis; choose the emoji corresponding with a certain class to remove it from your watchlist, and stop getting notifications from it.")
+    async def remove_class(self, ctx):
 
         user_id = ctx.message.author.id
-        args = vars(self.simple_parser.parse_args(args.split()))   
-        json_object, messages = await self.see_watchlist(ctx, mode=args.get("mode"), choices=True)
+
+
+        json_object, messages = await self.see_watchlist(ctx, choices=True)
 
         if json_object is None:
             return
@@ -862,12 +892,19 @@ class UCLA(commands.Cog):
         return [(name, html) for html in soup.select(".row-fluid.data_row.primary-row.class-info.class-not-checked")]
         # print(self._parse_class(soup))
 
-    @commands.command(brief="See classes you're keeping track of.", help="Usage: ~see_watchlist [--mode]\nmode: must be 'fast' or 'slow'. \nFast mode: displays embeds for each class in the watchlist.\nSlow mode: displays images from the class details webpage for each class in the watchlist.\n\nSee classes you're keeping track of.")
+    @commands.command(brief="See classes you're keeping track of.", help="Usage: ~see_watchlist\n\nSee classes you're keeping track of. If you want to remove any of these classes, you should use ~remove_class")
     @first_time()
-    async def see_watchlist(self, ctx, *, args, choices=False):
+    async def see_watchlist(self, ctx, choices=False):
 
         user_id = ctx.message.author.id
-        args = vars(self.simple_parser.parse_args(args.split()))
+        # if args:
+        #     try:
+        #         my_args = vars(self.simple_parser.parse_args(args.split()))
+        #     except SystemExit:
+        #         await ctx.send(f"Mode could not be interpreted, assuming fast mode.")
+        #         my_args = {"mode": "fast"}
+        # else:
+        #     my_args = {"mode": "fast"}
         json_object = self._get_user_watchlist(user_id)
 
         if json_object is None or len(json_object) == 0:
@@ -877,29 +914,29 @@ class UCLA(commands.Cog):
 
         messages = []
 
-        if args.get("mode") == "fast":
-            for n, my_class in enumerate(json_object):
-                # get class from public url
-                params = {'t': my_class["term"], 'sBy': 'classidnumber', 'id': my_class['class_id']}
-                final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
-                soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
+        # if my_args.get("mode") == "fast":
+        for n, my_class in enumerate(json_object):
+            # get class from public url
+            params = {'t': my_class["term"], 'sBy': 'classidnumber', 'id': my_class['class_id']}
+            final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
+            soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
 
-                message = await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
-                messages.append(message)
+            message = await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
+            messages.append(message)
 
-        else:  # we're in the slow mode
-            browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
-            for n, my_class in enumerate(json_object):
-                message = await self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
-                messages.append(message)
-            await browser.close()
+        # else:  # we're in the slow mode
+        #     browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
+        #     for n, my_class in enumerate(json_object):
+        #         message = await self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
+        #         messages.append(message)
+        #     await browser.close()
         
         await ctx.send(f"There are the classes in {ctx.message.author.name}'s watchlist.")
 
         return json_object, messages
 
 
-    @commands.command(brief='Clear classes a user\'s "to watch" list', help='Clears classes from a user\'s "to watch" list, if you have added classes to it. This means you\'ll stop recieving notifications.')
+    @commands.command(brief='Clear classes a user\'s "to watch" list', help='Usage: ~clear_classes\n\nClears classes from a user\'s "to watch" list, if you have added classes to it. This means you\'ll stop recieving notifications.')
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
 
@@ -908,6 +945,14 @@ class UCLA(commands.Cog):
 
         await ctx.send(f"Classes cleared for {ctx.message.author.name}.")
 
+    async def _get_all_users(self):
+        users = {}
+        for guild in self.bot.guilds:
+            async for member in guild.fetch_members():
+                if member.id not in users:
+                    users[member.id] = member
+        return users
+
     @tasks.loop(seconds=15.0)
     async def check_for_change(self):
         """
@@ -915,6 +960,9 @@ class UCLA(commands.Cog):
         If a class's status has changed, alert user that was watching it, and update their watchlist's data
         
         """
+        # get all bot users
+
+        users = await self._get_all_users()
 
         # iterate through all the files in the watchlist directory
         for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
@@ -933,17 +981,19 @@ class UCLA(commands.Cog):
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
                 enrollment_data = soup.select_one("div[id$=-status_data]").text
+                enrollment_status = self._parse_enrollment_status(enrollment_data)['enrollment_status']
 
                 # await self.bot.get_user(int(user_id)).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                 #  Current status  changed from   previously recorded status
-                if enrollment_data      !=        my_class["enrollment_data"]:
+                if enrollment_status      !=        my_class["enrollment_status"]:
                     myid = f"<@{user_id}>"
-                    await self.bot.get_user(int(user_id)).send(
-                        f'{myid} {my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
+                    if int(user_id) in users:
+                        await users[int(user_id)].send(
+                            f'{myid} {my_class["class_name"]} changed from **{my_class["enrollment_status"]}** to **{enrollment_status}**')
 
-                    my_class['enrollment_data'] = enrollment_data
-                    need_change = True
+                        my_class['enrollment_status'] = enrollment_status
+                        need_change = True
 
             if need_change:
                 # update watchlist
