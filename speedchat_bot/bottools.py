@@ -72,7 +72,7 @@ class BotTools(commands.Cog):
         embedVar.add_field(name="~see_watchlist", value="```\n~see_watchlist```", inline=False)
         embedVar.add_field(name="~remove_class",  value="```\n~remove_classes```", inline=True)
         embedVar.add_field(name="~clear_classes", value="```\n~clear_classes```", inline=True)
-        embedVar.add_field(name="Help!", value="You can always run `~help` for an overview of every command available, and `help commandname` for more detailed info on a particular command.", inline=False)
+        embedVar.add_field(name="Help!", value="You can always run `~help` for an overview of every command available, and `~help commandname` for more detailed info on a particular command.", inline=False)
         # TODO: upload image to pic serves to use here, can use local file
         embedVar.set_image(url="https://raw.githubusercontent.com/mting314/speedchat-bot/main/images/search.png?token=ANTHQXS3D3JFNOAJDDAHUN3ACESSQ")
         embedVar.set_footer(text="Bottom Text. You can message me at coolguy5530#7055 if you are stuck or find issues.")
