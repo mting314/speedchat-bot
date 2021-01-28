@@ -624,11 +624,14 @@ class UCLA(commands.Cog):
                         # The index of our choice will correspond with how "far" out emoji
                         # choice was past number that corresponds with the A emoji
                         choice_index = ord(r.emoji) - A_EMOJI_INT
+                        try:
+                            if ctx.guild:
+                                for emoji_choice in emoji_choices:
+                                    await status.clear_reaction(emoji_choice)
+                                await status.clear_reaction(NO_EMOJI)
+                        except discord.errors.Forbidden:
+                            pass
 
-                        if ctx.guild:
-                            for emoji_choice in emoji_choices:
-                                await status.clear_reaction(emoji_choice)
-                            await status.clear_reaction(NO_EMOJI)
 
                         return choice_index
 
