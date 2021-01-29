@@ -12,6 +12,9 @@ import os
 import argparse
 import shutil
 import time
+from tabulate import tabulate
+
+from pymongo import MongoClient
 
 import asyncio
 # from pyppeteer import launch
@@ -138,6 +141,9 @@ class UCLA(commands.Cog):
         self.COURSE_TITLES_VIEW     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
         self.COURSE_TITLES_PAGE     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
 
+
+        self.db = MongoClient("mongodb+srv://michael:28111230@cluster0.qrg22.mongodb.net/sample_analytics?retryWrites=true&w=majority").discord
+
         self.default_term = "21S"
         self.data_dir = "speedchat_bot/ucla_data/{term}"
 
@@ -150,8 +156,9 @@ class UCLA(commands.Cog):
         self.parser.add_argument('--term', dest='term', default=self.default_term)
         self.parser.add_argument('--deep', action='store_true')
 
-        # self.simple_parser = argparse.ArgumentParser()
-        # self.simple_parser.add_argument('--mode', dest='mode', default="fast")
+        self.simple_parser = argparse.ArgumentParser()
+        self.simple_parser.add_argument('alias', metavar='alias', type=str, nargs='+', help='the alias you want to set for the --target')
+        self.simple_parser.add_argument('--target', dest='target', required=True, nargs='+')
 
         self.EXEC_PATH = os.environ.get("GOOGLE_CHROME_SHIM", None)
 
@@ -513,14 +520,21 @@ class UCLA(commands.Cog):
                 class_dict.items()}
 
     def _get_user_watchlist(self, user_id):
-        try:
-            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
-            json_object = json.load(a_file)
-            a_file.close()
-        except (FileNotFoundError, json.JSONDecodeError):
-            json_object = None
 
-        return json_object
+        result = self.db.users.find_one({"discord_id": user_id})
+
+        if "watchlist" not in result or len(result["watchlist"]) == 0:
+            return None
+
+        return result["watchlist"]
+        # try:
+        #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
+        #     json_object = json.load(a_file)
+        #     a_file.close()
+        # except (FileNotFoundError, json.JSONDecodeError):
+        #     json_object = None
+
+        # return json_object
 
 
     def _is_watching(self, user_id, class_id):
@@ -576,23 +590,12 @@ class UCLA(commands.Cog):
         # bits like enrollment status and instructor
 
         messages = []
-        if mode == "slow":
-            browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
 
-            for i, name_soup_pair in enumerate(htmls):
-                # class_no assumption: the class_id is always the first 9 digits of the id of the first div in the
-                # GetCourseSummary html
-                class_id = parse_class_id(str(name_soup_pair[1]))
-                message = await self._generate_image(browser, class_id, ctx, letter_choice=chr(i + 65) if choices else None)
-                messages.append(message)
 
-            await browser.close()
-
-        else:  # we're in fast mode
-            embed_list = self._generate_all_embeds(htmls, display_description=display_description, user_id=user_id, choices=choices)
-            for generated_embed in embed_list:
-                message = await ctx.channel.send(embed=generated_embed)
-                messages.append(message)
+        embed_list = self._generate_all_embeds(htmls, display_description=display_description, user_id=user_id, choices=choices)
+        for generated_embed in embed_list:
+            message = await ctx.channel.send(embed=generated_embed)
+            messages.append(message)
 
         if len(htmls) == 0:
             await ctx.channel.send(f"Sorry, I couldn't find that class. (Can't find the class you're looking for? Try using ~subject {subject} to see all classes under {subject}.")
@@ -664,12 +667,18 @@ class UCLA(commands.Cog):
         if not os.path.exists(self.data_dir.format(term=my_args.get("term") or self.default_term) + "/class_names.json"):
             await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
+        real_name = self.search_for_alias(user_id, subject)
+        if real_name:
+            await ctx.send(f"Applying alias {subject} -> {real_name}")
+            subject = real_name
+
         # fetch list of class HTMLS
         try:
             messages = await self._generate_class_view(ctx, subject, catalog, term=my_args["term"], user_id=user_id, choices=True)
         except KeyError:
             await ctx.send(f"Sorry, I don't think {subject} is a real subject.\nNote that you must use the subject abbreviation you see on the Class Planner, i.e. MATH or COM SCI or C&S BIO")
-            raise KeyError(f"Couldn't find subject {subject}")
+            return
+            # raise KeyError(f"Couldn't find subject {subject}")
         
         # check if we actually found any
         if len(messages) == 0:
@@ -688,31 +697,58 @@ class UCLA(commands.Cog):
             for _, message in messages:
                 await message.delete()
 
-            # read
-
-            json_object = self._get_user_watchlist(user_id) or []
-
             parsed_class = self._parse_class(name_soup_pair)
 
-            # check for duplicates
-            for my_class in json_object:
+            to_insert = self.db.users.find_one({"discord_id": user_id}) or {"discord_id": user_id}
+
+            if "watchlist" not in to_insert:
+                to_insert["watchlist"] = []
+
+            for my_class in to_insert["watchlist"]:
                 if parsed_class['class_id'] == my_class["class_id"] and parsed_class['term'] == my_class["term"]:
                     await ctx.channel.send("You're already keeping track of that class!")
                     return
 
-            # write class_id, *current* enrollment_status, and a name to the json
             enrollment_data = name_soup_pair[1].select_one("div[id$=-status_data]").text
             enrollment_dict = self._parse_enrollment_status(enrollment_data)
-            json_object.append({
+            to_insert["watchlist"].append({
                 "class_id": parsed_class['class_id'],
                 "enrollment_status": enrollment_dict['enrollment_status'],
                 "class_name": name_soup_pair[0],
                 "term": parsed_class["term"],
             })
 
-            a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
-            json.dump(json_object, a_file)
-            a_file.close()
+
+            result = self.db.users.update_one({"discord_id": user_id}, {"$set": to_insert}, upsert=True)
+            if result.modified_count != 0:
+                await ctx.send(f"{name_soup_pair[0]} successfully added to {ctx.message.author.name}'s watchlist successfully.")
+
+            # # read
+
+
+
+            # json_object = self._get_user_watchlist(user_id) or []
+
+
+            # # check for duplicates
+            # for my_class in json_object:
+            #     if parsed_class['class_id'] == my_class["class_id"] and parsed_class['term'] == my_class["term"]:
+            #         await ctx.channel.send("You're already keeping track of that class!")
+            #         return
+
+            # # write class_id, *current* enrollment_status, and a name to the json
+            # enrollment_data = name_soup_pair[1].select_one("div[id$=-status_data]").text
+            # enrollment_dict = self._parse_enrollment_status(enrollment_data)
+            # json_object.append({
+            #     "class_id": parsed_class['class_id'],
+            #     "enrollment_status": enrollment_dict['enrollment_status'],
+            #     "class_name": name_soup_pair[0],
+            #     "term": parsed_class["term"],
+            # })
+
+            # a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
+            # json.dump(json_object, a_file)
+            # a_file.close()
 
     @commands.command(
         help="Display all classes under a given subject.\n\nUsage: ~subject subject_name [--deep]\n\nExample: ~subject COM SCI --deep \n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\ndeep: if the --deep flag is provided, displays embeds for all the classes. Because it has to retrieve all info like instructors, enrollment data, etc., it takes a while to load all classes.\n\nDisplays all classes under a subject, one page at a time. Use the emoji reactions to scroll through pages.",
@@ -853,26 +889,30 @@ class UCLA(commands.Cog):
         user_id = ctx.message.author.id
 
 
-        json_object, messages = await self.see_watchlist(ctx, choices=True)
+        watchlist, messages = await self.see_watchlist(ctx, choices=True)
 
-        if json_object is None:
+        if watchlist is None:
             return
 
-        choice_index = await self._present_choices(ctx, len(json_object))
+        choice_index = await self._present_choices(ctx, len(watchlist))
 
         if choice_index is not None:
+            
+
             # based on the emoji index, choose the corresponding entry of the htmls
-            removed_class = json_object.pop(choice_index)
+            removed_class = watchlist.pop(choice_index)
             message = messages.pop(choice_index)
             await message.delete()
 
-            if len(json_object) == 0:
-                if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
-                    os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
-            else:
-                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
-                json.dump(json_object, a_file)
-                a_file.close()
+            self.db.users.update_one({"discord_id": user_id}, {"$set": {"watchlist": watchlist}})
+
+            # if len(watchlist) == 0:
+            #     if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
+            #         os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
+            # else:
+            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
+            #     json.dump(json_object, a_file)
+            #     a_file.close()
 
             await ctx.send("You removed " + removed_class["class_name"])
 
@@ -897,12 +937,15 @@ class UCLA(commands.Cog):
     @commands.command(brief="See classes you're keeping track of.", help="Usage: ~see_watchlist\n\nSee classes you're keeping track of. If you want to remove any of these classes, you should use ~remove_class")
     @first_time()
     async def see_watchlist(self, ctx, choices=False):
+        await ctx.send(f"Loading {ctx.message.author.name}'s watchlist...")
 
         user_id = ctx.message.author.id
 
-        json_object = self._get_user_watchlist(user_id)
+        watchlist = self.db.users.find_one({"discord_id": user_id}).get("watchlist") or []
 
-        if json_object is None or len(json_object) == 0:
+        # json_object = self._get_user_watchlist(user_id)
+
+        if len(watchlist) == 0:
             await ctx.channel.send(
                 "Looks like you don't have any classes kept track of, or your data got malformed.\nIf the file is malformed, try clearing it with `~clear_classes`.")
             return None, None
@@ -910,7 +953,7 @@ class UCLA(commands.Cog):
         messages = []
 
         # if my_args.get("mode") == "fast":
-        for n, my_class in enumerate(json_object):
+        for n, my_class in enumerate(watchlist):
             # get class from public url
             params = {'t': my_class["term"], 'sBy': 'classidnumber', 'id': my_class['class_id']}
             final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
@@ -919,26 +962,24 @@ class UCLA(commands.Cog):
             message = await ctx.channel.send(embed=self._generate_embed(self._parse_class(soup), letter_choice=chr(n+65) if choices else None, watched=self._is_watching(user_id, my_class['class_id'])))
             messages.append(message)
 
-        # else:  # we're in the slow mode
-        #     browser = await launch(headless=True, executablePath=self.EXEC_PATH, args=['--no-sandbox'])
-        #     for n, my_class in enumerate(json_object):
-        #         message = await self._generate_image(browser, my_class['class_id'], ctx, letter_choice=chr(n+65) if choices else None)
-        #         messages.append(message)
-        #     await browser.close()
         
         await ctx.send(f"There are the classes in {ctx.message.author.name}'s watchlist.")
 
-        return json_object, messages
+        return watchlist, messages
 
 
     @commands.command(brief='Clear classes a user\'s "to watch" list', help='Usage: ~clear_classes\n\nClears classes from a user\'s "to watch" list, if you have added classes to it. This means you\'ll stop recieving notifications.')
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
 
-        if self._get_user_watchlist(user_id):
-            os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
+        # if self._get_user_watchlist(user_id):
+        #     os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
 
-        await ctx.send(f"Classes cleared for {ctx.message.author.name}.")
+        remove_watchlist_result = self.db.users.update_one({"discord_id": user_id}, {"$set": {"watchlist": []}})
+        if remove_watchlist_result.modified_count > 0:
+            await ctx.send(f"Classes cleared for {ctx.message.author.name}.")
+        else:
+            await ctx.send(f"It looks like {ctx.message.author.name} didn't have any classes to clear.")
 
     async def _get_all_users(self):
         users = {}
@@ -956,8 +997,11 @@ class UCLA(commands.Cog):
         
         """
         # get all bot users
-
-        users = await self._get_all_users()
+        try:
+            users = await self._get_all_users()
+        except discord.errors.HTTPException:
+            print("couldn't fetch all members")
+            return 
 
         # iterate through all the files in the watchlist directory
         for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
@@ -978,7 +1022,6 @@ class UCLA(commands.Cog):
                 enrollment_data = soup.select_one("div[id$=-status_data]").text
                 enrollment_status = self._parse_enrollment_status(enrollment_data)['enrollment_status']
 
-                # await self.bot.get_user(int(user_id)).send(f'{my_class["class_name"]} changed from **{my_class["enrollment_data"]}** to **{enrollment_data}**')
 
                 #  Current status  changed from   previously recorded status
                 if enrollment_status      !=        my_class["enrollment_status"]:
@@ -1045,3 +1088,103 @@ class UCLA(commands.Cog):
                 print(f"{term} needs a reload")
                 self._reload_classes(term=term)
                 break # reload at most 1 class
+
+
+
+    @commands.command(brief="Make an alias for a subject with weird abbreviation.", help="Stop checking for changes in users' watchlists. It is written, only coolguy5530 can use this command.")
+    async def alias(self, ctx, *, args):
+        """
+        Registers an alias for a certain target subject, so that you can search for ~search_class CS 180
+        rather than COM SCI.
+        """
+        user_id = ctx.message.author.id
+
+        try:
+            my_args = vars(self.simple_parser.parse_args(args.split()))
+            if not my_args.get("alias"):
+                await ctx.send("--alias argument is required")
+                return
+            if not my_args.get("target"):
+                await ctx.send("--target argument is required")
+                return
+
+            alias = ' '.join(my_args.get("alias")).upper()
+            target = ' '.join(my_args.get("target")).upper()
+
+        except SystemExit:
+            await ctx.send("Sorry, I can't parse that. (Did you include the --target argument?)")
+            return
+
+
+        result = self.db.users.update_one({"discord_id": user_id}, {"$set": {f"aliases.{alias}": target}})
+        
+        if result.modified_count != 0:
+            await ctx.send(f"Alias {alias} -> {target} has been set for {ctx.message.author.name}.")
+            return
+        else:
+            # it could be the case that alias is already set
+            result = self.db.users.find_one({"discord_id": user_id, f"aliases.{alias}": {"$exists": True}})
+            if result:
+                await ctx.send(f"It looks like the alias {alias} is already set to {alias}->{result['aliases'][alias]}. If you want to remove this, use `~remove_alias {alias}`")
+                return 
+                
+        await ctx.send(f"Alias failed to be set.")
+        # aliases_list = self.get_alias_list(user_id) or {}
+
+
+        # if not aliases_list or "aliases" not in aliases_list:
+        #     aliases_list["aliases"] = {}
+
+        # aliases_list["aliases"][alias] = target
+
+        
+        # a_file = open(f"speedchat_bot/ucla_data/aliases/{user_id}.json", "w")
+        # json.dump(aliases_list, a_file)
+        # a_file.close()
+            
+    def get_aliases(self, user_id):
+        result = self.db.users.find_one({"discord_id": user_id})
+        if not result:
+            return None
+        
+        return result.get("aliases")
+
+    def search_for_alias(self, user_id, alias):
+        """
+        Tries to find if the subject given in a search command is an alias a user has set.
+        """
+        aliases = self.get_aliases(user_id)
+        return aliases.get(alias)
+
+    @commands.command(help="See all the aliases you have set.")
+    async def see_aliases(self, ctx):
+        user_id = ctx.message.author.id
+
+        aliases = self.get_aliases(user_id)
+
+        if not aliases:
+            await ctx.send(f"You have no aliases set. (You can set some with ~alias)")
+
+        embedVar = discord.Embed(title=f"Aliases for {ctx.message.author.name}")
+
+        for k,v in aliases.items():
+            embedVar.add_field(name=k, value=v, inline=True)
+
+        await ctx.send(embed=embedVar)
+
+    @commands.command(help="Remove an alias you've set.")
+    async def remove_alias(self, ctx, *, args):
+
+        if not args:
+            await ctx.send(f"Missing alias argument. Example usage: ~remove_alias CS")
+        
+        user_id = ctx.message.author.id
+        alias = args.upper()
+        result = self.db.users.update_one({"discord_id": user_id}, {"$unset": {f"aliases.{alias}": 1}})
+        if result.matched_count == 0:
+            await ctx.send("Sorry, I don't think you have any aliases set.")
+        elif result.modified_count == 0:
+            await ctx.send(f"Sorry, it doesn't look like you have the alias {alias}. These are the aliases you have set:")
+            await self.see_aliases(ctx)
+        else:
+            await ctx.send(f"Alias {alias} successfully removed.")
