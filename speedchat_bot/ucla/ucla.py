@@ -14,7 +14,7 @@ import shutil
 import time
 from tabulate import tabulate
 
-from pymongo import MongoClient, ReturnDocument
+from pymongo import MongoClient, ReturnDocument, errors
 
 import asyncio
 # from pyppeteer import launch
@@ -950,7 +950,12 @@ class UCLA(commands.Cog):
             return 
 
         # iterate through all the files in the watchlist directory
-        for user in self.db.users.find():
+        try:
+            database_users = self.db.users.find()
+        except errors.ServerSelectionTimeoutError:
+            print("couldn't access database users")
+
+        for user in database_users:
 
             # user_id, _ = os.path.splitext(user_watchlist)
             # json_object = self._get_user_watchlist(user_id)
