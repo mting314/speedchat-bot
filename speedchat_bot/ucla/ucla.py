@@ -539,14 +539,6 @@ class UCLA(commands.Cog):
             return None
 
         return result["watchlist"]
-        # try:
-        #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "r")
-        #     json_object = json.load(a_file)
-        #     a_file.close()
-        # except (FileNotFoundError, json.JSONDecodeError):
-        #     json_object = None
-
-        # return json_object
 
 
     def _is_watching(self, user_id, class_id):
@@ -588,18 +580,6 @@ class UCLA(commands.Cog):
             print(name_model_pair[1])
             htmls = htmls + self.check_class(name_model_pair)
 
-
-        # I can't decide how this ought to be designed (idk anything about UX), but this is how it's gonna work:
-        # there are two modes: slow and fast
-        # Slow: use pyppeteer to query results by class_id, and take screenshot, send in channel
-        # pros: looks pretty, easier to read
-        # cons: I'm not sure how much I trust the ability to parse the class_id (see class_id assumption)
-        # also, slower by like 7 seconds, might be annoying when browsing through lots of different classes
-
-        # Fast: Just send 
-        # pros:
-        # cons: Looks pretty ugly, quite a bit harder to read easily (especially picking out the important)
-        # bits like enrollment status and instructor
 
         messages = []
 
@@ -726,14 +706,14 @@ class UCLA(commands.Cog):
             to_insert["watchlist"].append({
                 "class_id": parsed_class['class_id'],
                 "enrollment_status": enrollment_dict['enrollment_status'],
-                "class_name": name_soup_pair[0],
+                "class_name": parsed_class['class_name'],
                 "term": parsed_class["term"],
             })
 
 
             result = self.db.users.update_one({"discord_id": user_id}, {"$set": to_insert}, upsert=True)
             if result.modified_count != 0:
-                await ctx.send(f"{name_soup_pair[0]} successfully added to {ctx.message.author.name}'s watchlist successfully.")
+                await ctx.send(f"{parsed_class['class_name']} {parsed_class['section_name']} successfully added to {ctx.message.author.name}'s watchlist successfully.")
 
 
     @commands.command(
@@ -784,9 +764,6 @@ class UCLA(commands.Cog):
             page_length = 10
             term_to_search = my_args.get('term') or self.default_term
             if term_to_search in self.current_terms:
-                # f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
-                # json_object = json.load(f)['class_names']
-                # f.close()
                 result = self.db.class_data.find_one({"term": term_to_search})
                 if result is not None and "class_names" in result and subject in result["class_names"]:
                     all_classes = [my_class[0] for my_class in result["class_names"][subject]]
@@ -893,14 +870,6 @@ class UCLA(commands.Cog):
 
             self.db.users.update_one({"discord_id": user_id}, {"$set": {"watchlist": watchlist}})
 
-            # if len(watchlist) == 0:
-            #     if os.path.exists(f"speedchat_bot/ucla_data/watchlist/{user_id}.json"):
-            #         os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
-            # else:
-            #     a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
-            #     json.dump(json_object, a_file)
-            #     a_file.close()
-
             await ctx.send("You removed " + removed_class["class_name"])
 
     def check_class(self, name_model_pair):
@@ -930,7 +899,6 @@ class UCLA(commands.Cog):
 
         watchlist = self.db.users.find_one({"discord_id": user_id}).get("watchlist") or []
 
-        # json_object = self._get_user_watchlist(user_id)
 
         if len(watchlist) == 0:
             await ctx.channel.send(
@@ -958,9 +926,6 @@ class UCLA(commands.Cog):
     @commands.command(brief='Clear classes a user\'s "to watch" list', help='Usage: ~clear_classes\n\nClears classes from a user\'s "to watch" list, if you have added classes to it. This means you\'ll stop recieving notifications.')
     async def clear_classes(self, ctx):
         user_id = ctx.message.author.id
-
-        # if self._get_user_watchlist(user_id):
-        #     os.remove(f"speedchat_bot/ucla_data/watchlist/{user_id}.json")
 
         remove_watchlist_result = self.db.users.update_one({"discord_id": user_id}, {"$set": {"watchlist": []}})
         if remove_watchlist_result.modified_count > 0:
@@ -991,18 +956,20 @@ class UCLA(commands.Cog):
             return 
 
         # iterate through all the files in the watchlist directory
-        for user_watchlist in os.listdir("speedchat_bot/ucla_data/watchlist"):
+        for user in self.db.users.find():
 
-            user_id, _ = os.path.splitext(user_watchlist)
-            json_object = self._get_user_watchlist(user_id)
+            # user_id, _ = os.path.splitext(user_watchlist)
+            # json_object = self._get_user_watchlist(user_id)
+            user_id = user["discord_id"]
+            watchlist = user["watchlist"]
 
-            if json_object is None:
+            if watchlist is None:
                 # The file is not there/unreadable, no point going on to check
                 break
 
             need_change = False
 
-            for my_class in json_object:
+            for my_class in watchlist:
                 params = {'t': my_class['term'], 'sBy': 'classidnumber', 'id': my_class['class_id']}
                 final_url = _generate_url(self.PUBLIC_RESULTS_URL, params)
                 soup = BeautifulSoup(requests.get(final_url, headers=HEADERS).content, "lxml")
@@ -1022,9 +989,13 @@ class UCLA(commands.Cog):
 
             if need_change:
                 # update watchlist
-                a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "w")
-                json.dump(json_object, a_file)
-                a_file.close()
+                result = self.db.users.update_one({"discord_id": user_id}, {"$set": {"watchlist": watchlist}})
+                if result.modified_count == 0:
+                    print(f"couldn't update database for user {user_id}")
+
+                # a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_watchlist}", "w")
+                # json.dump(json_object, a_file)
+                # a_file.close()
 
         print(self.check_for_change.current_loop)
 
@@ -1052,18 +1023,6 @@ class UCLA(commands.Cog):
         else:
             return False
 
-        # if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
-        #     return True
-        # else:
-        #     f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
-        #     json_object = json.load(f)
-        #     f.close()
-
-        #     # if the last time the json was updated was less than a week ago, we don't have to actually reload
-        #     if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
-        #         return False
-        #     else:
-        #         return True
 
 
     @tasks.loop(hours=24)
@@ -1071,6 +1030,10 @@ class UCLA(commands.Cog):
         print("Starting daily reload")
         # flush data
         self.current_terms = self._get_current_terms()
+
+        for class_data in self.db.class_data.find(projection=['_id', 'term']):
+            if "term" not in class_data or class_data["term"] not in self.current_terms:
+                self.db.class_data.delete_one({'_id': class_data['_id']})
 
         data_dirs = list(os.walk("speedchat_bot/ucla_data"))[0][1]
         if "watchlist" in data_dirs:
@@ -1119,7 +1082,7 @@ class UCLA(commands.Cog):
             return
         else:
             # it could be the case that alias is already set
-            result = self.db.users.find_one({"discord_id": user_id, f"aliases.{alias}": {"$exists": True}})
+            result = self.db.users.find_one({"discord_id": user_id, f"aliases.{alias}": {"$exists": True}}, projection=['aliases'])
             if result:
                 await ctx.send(f"It looks like the alias {alias} is already set to {alias}->{result['aliases'][alias]}. If you want to remove this, use `~remove_alias {alias}`")
                 return 
@@ -1127,7 +1090,7 @@ class UCLA(commands.Cog):
         await ctx.send(f"Alias failed to be set.")
             
     def get_aliases(self, user_id):
-        result = self.db.users.find_one({"discord_id": user_id})
+        result = self.db.users.find_one({"discord_id": user_id}, projection=['aliases'])
         if not result:
             return None
         
