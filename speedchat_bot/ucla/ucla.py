@@ -145,7 +145,6 @@ class UCLA(commands.Cog):
         self.db = MongoClient("mongodb+srv://michael:28111230@cluster0.qrg22.mongodb.net/sample_analytics?retryWrites=true&w=majority").discord
 
         self.default_term = "21S"
-        self.data_dir = "speedchat_bot/ucla_data/{term}"
 
         self.daily_reload.start()
         self.check_for_change.start()
@@ -193,9 +192,7 @@ class UCLA(commands.Cog):
 
         if search_term in self.current_terms:
             # we have a json for it, find it in there
-            # with open(self.data_dir.format(term=search_term) + "/class_names.json") as fp:
                 # TODO: Maybe separate subjects into their own json?
-                # data = json.load(fp)['class_names']
             
                 classes_in_subject = class_results["class_names"][subject]
                 for my_class in classes_in_subject:
@@ -350,13 +347,6 @@ class UCLA(commands.Cog):
 
                 return self.db.class_data.find_one_and_update({"term": term}, {"$set": {"subjects": subjects}}, upsert=True, return_document=ReturnDocument.AFTER)
                 
-                # if term and not os.path.exists(self.data_dir.format(term=term)):
-                #     os.mkdir(self.data_dir.format(term=term))
-
-                # subjects_file = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json", "w+")
-                # subjects_file.write(json.dumps(subjects))
-                # subjects_file.close()
-                # return
 
     def _reload_classes(self, term=None):
         # Load list of subjects parsed from UCLA website
@@ -365,10 +355,6 @@ class UCLA(commands.Cog):
         if subjects_result is None or "subjects" not in subjects_result:
             print("couldn't get subjects")
             return
-
-        # f = open(self.data_dir.format(term=(term or self.default_term)) + "/subjects.json")
-        # self.subjectsJSON = json.load(f)
-        # f.close()
 
         class_name_dict = {}
 
@@ -407,11 +393,6 @@ class UCLA(commands.Cog):
 
         self.db.class_data.update_one({"term": term}, {"$set": {"class_names": class_name_dict}}, upsert=True)
         self.db.class_data.update_one({"term": term}, {"$set": {"last_updated": time.time()}}, upsert=True)
-
-        # class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
-        # class_names_file.write(
-        #     json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, sort_keys=True))
-        # class_names_file.close()
 
     def _parse_enrollment_status(self, my_string):
         """
@@ -535,7 +516,7 @@ class UCLA(commands.Cog):
 
         result = self.db.users.find_one({"discord_id": user_id})
 
-        if "watchlist" not in result or len(result["watchlist"]) == 0:
+        if result is None or "watchlist" not in result or len(result["watchlist"]) == 0:
             return None
 
         return result["watchlist"]
@@ -897,7 +878,11 @@ class UCLA(commands.Cog):
 
         user_id = ctx.message.author.id
 
-        watchlist = self.db.users.find_one({"discord_id": user_id}).get("watchlist") or []
+        result = self.db.users.find_one({"discord_id": user_id})
+        if result is None or "watchlist" not in result:
+            watchlist = []
+        else:
+            watchlist = result["watchlist"]
 
 
         if len(watchlist) == 0:
@@ -960,10 +945,10 @@ class UCLA(commands.Cog):
 
             # user_id, _ = os.path.splitext(user_watchlist)
             # json_object = self._get_user_watchlist(user_id)
-            user_id = user["discord_id"]
-            watchlist = user["watchlist"]
+            user_id = user.get("discord_id")
+            watchlist = user.get("watchlist")
 
-            if watchlist is None:
+            if watchlist is None or user_id is None:
                 # The file is not there/unreadable, no point going on to check
                 break
 
@@ -1035,12 +1020,6 @@ class UCLA(commands.Cog):
             if "term" not in class_data or class_data["term"] not in self.current_terms:
                 self.db.class_data.delete_one({'_id': class_data['_id']})
 
-        data_dirs = list(os.walk("speedchat_bot/ucla_data"))[0][1]
-        if "watchlist" in data_dirs:
-            data_dirs.remove("watchlist")
-        for term_folder in data_dirs:
-            if term_folder not in self.current_terms:
-                shutil.rmtree("speedchat_bot/ucla_data/"+term_folder)
 
         for term in self.current_terms:
             if self._needs_reload(term):
@@ -1074,18 +1053,16 @@ class UCLA(commands.Cog):
             await ctx.send("Sorry, I can't parse that. (Did you include the --target argument?)")
             return
 
+        result = self.db.users.find_one({"discord_id": user_id, f"aliases.{alias}": {"$exists": True}}, projection=['aliases'])
+        if result:
+            await ctx.send(f"It looks like the alias {alias} is already set to {alias}->{result['aliases'][alias]}. If you want to remove this, use `~remove_alias {alias}`")
+            return 
 
         result = self.db.users.update_one({"discord_id": user_id}, {"$set": {f"aliases.{alias}": target}}, upsert=True)
         
-        if result.modified_count != 0:
+        if result.modified_count != 0 or result.upserted_id is not None:
             await ctx.send(f"Alias {alias} -> {target} has been set for {ctx.message.author.name}.")
             return
-        else:
-            # it could be the case that alias is already set
-            result = self.db.users.find_one({"discord_id": user_id, f"aliases.{alias}": {"$exists": True}}, projection=['aliases'])
-            if result:
-                await ctx.send(f"It looks like the alias {alias} is already set to {alias}->{result['aliases'][alias]}. If you want to remove this, use `~remove_alias {alias}`")
-                return 
                 
         await ctx.send(f"Alias failed to be set.")
             
@@ -1100,7 +1077,7 @@ class UCLA(commands.Cog):
         """
         Tries to find if the subject given in a search command is an alias a user has set.
         """
-        aliases = self.get_aliases(user_id)
+        aliases = self.get_aliases(user_id) or {}
         return aliases.get(alias)
 
     @commands.command(help="See all the aliases you have set.")
