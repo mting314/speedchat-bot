@@ -14,7 +14,7 @@ import shutil
 import time
 from tabulate import tabulate
 
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 
 import asyncio
 # from pyppeteer import launch
@@ -186,16 +186,18 @@ class UCLA(commands.Cog):
         class_list = []
 
         search_term = term or self.default_term
+        class_results = self.db.class_data.find_one({"term": search_term})
 
-        if not os.path.exists(self.data_dir.format(term=search_term) + "/class_names.json") and search_term in self.current_terms:
+        if class_results is None and search_term in self.current_terms:
             self._reload_classes(term=search_term)
 
         if search_term in self.current_terms:
             # we have a json for it, find it in there
-            with open(self.data_dir.format(term=search_term) + "/class_names.json") as fp:
+            # with open(self.data_dir.format(term=search_term) + "/class_names.json") as fp:
                 # TODO: Maybe separate subjects into their own json?
-                data = json.load(fp)['class_names']
-                classes_in_subject = data[subject]
+                # data = json.load(fp)['class_names']
+            
+                classes_in_subject = class_results["class_names"][subject]
                 for my_class in classes_in_subject:
                     if catalog is None or my_class[0].split()[0] == str(catalog):
                         class_list.append((f"{subject} {my_class[0]}", my_class[1]))
@@ -345,28 +347,35 @@ class UCLA(commands.Cog):
             matches = template.search(str(script))
             if matches:
                 subjects = json.loads(matches[1].replace("&quot;", '"'))
-                if term and not os.path.exists(self.data_dir.format(term=term)):
-                    os.mkdir(self.data_dir.format(term=term))
 
-                subjects_file = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json", "w+")
-                subjects_file.write(json.dumps(subjects))
-                subjects_file.close()
-                return
+                return self.db.class_data.find_one_and_update({"term": term}, {"$set": {"subjects": subjects}}, upsert=True, return_document=ReturnDocument.AFTER)
+                
+                # if term and not os.path.exists(self.data_dir.format(term=term)):
+                #     os.mkdir(self.data_dir.format(term=term))
+
+                # subjects_file = open(self.data_dir.format(term=term or self.default_term) + "/subjects.json", "w+")
+                # subjects_file.write(json.dumps(subjects))
+                # subjects_file.close()
+                # return
 
     def _reload_classes(self, term=None):
         # Load list of subjects parsed from UCLA website
-        self.get_subjects_for_term(term or self.default_term)
+        subjects_result = self.get_subjects_for_term(term or self.default_term)
 
-        f = open(self.data_dir.format(term=(term or self.default_term)) + "/subjects.json")
-        self.subjectsJSON = json.load(f)
-        f.close()
+        if subjects_result is None or "subjects" not in subjects_result:
+            print("couldn't get subjects")
+            return
+
+        # f = open(self.data_dir.format(term=(term or self.default_term)) + "/subjects.json")
+        # self.subjectsJSON = json.load(f)
+        # f.close()
 
         class_name_dict = {}
 
         # we're sending command from discord channel, so force the reload goes through regardless of when last updated
 
         print(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
-        for n, subject in enumerate(self.subjectsJSON):
+        for n, subject in enumerate(subjects_result["subjects"]):
             pageNumber = 1
 
             # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
@@ -396,10 +405,13 @@ class UCLA(commands.Cog):
 
         print("Done reloading")
 
-        class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
-        class_names_file.write(
-            json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, sort_keys=True))
-        class_names_file.close()
+        self.db.class_data.update_one({"term": term}, {"$set": {"class_names": class_name_dict}}, upsert=True)
+        self.db.class_data.update_one({"term": term}, {"$set": {"last_updated": time.time()}}, upsert=True)
+
+        # class_names_file = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json", "w")
+        # class_names_file.write(
+        #     json.dumps({"last_updated": time.time(), "term": term or self.default_term, "class_names": class_name_dict}, sort_keys=True))
+        # class_names_file.close()
 
     def _parse_enrollment_status(self, my_string):
         """
@@ -664,7 +676,7 @@ class UCLA(commands.Cog):
             await ctx.send("Sorry, I can't parse that. Did you remember to provide a catalog number?")
             return
 
-        if not os.path.exists(self.data_dir.format(term=my_args.get("term") or self.default_term) + "/class_names.json"):
+        if self.db.class_data.find_one({"term": my_args.get('term') or self.default_term}) is None:
             await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         real_name = self.search_for_alias(user_id, subject)
@@ -723,32 +735,6 @@ class UCLA(commands.Cog):
             if result.modified_count != 0:
                 await ctx.send(f"{name_soup_pair[0]} successfully added to {ctx.message.author.name}'s watchlist successfully.")
 
-            # # read
-
-
-
-            # json_object = self._get_user_watchlist(user_id) or []
-
-
-            # # check for duplicates
-            # for my_class in json_object:
-            #     if parsed_class['class_id'] == my_class["class_id"] and parsed_class['term'] == my_class["term"]:
-            #         await ctx.channel.send("You're already keeping track of that class!")
-            #         return
-
-            # # write class_id, *current* enrollment_status, and a name to the json
-            # enrollment_data = name_soup_pair[1].select_one("div[id$=-status_data]").text
-            # enrollment_dict = self._parse_enrollment_status(enrollment_data)
-            # json_object.append({
-            #     "class_id": parsed_class['class_id'],
-            #     "enrollment_status": enrollment_dict['enrollment_status'],
-            #     "class_name": name_soup_pair[0],
-            #     "term": parsed_class["term"],
-            # })
-
-            # a_file = open(f"speedchat_bot/ucla_data/watchlist/{user_id}.json", "w")
-            # json.dump(json_object, a_file)
-            # a_file.close()
 
     @commands.command(
         help="Display all classes under a given subject.\n\nUsage: ~subject subject_name [--deep]\n\nExample: ~subject COM SCI --deep \n\nsubject: The subject area of the class you're looking for. Must be in the format that the Class Planner displays, i.e. COM SCI, or C&S BIO.\ndeep: if the --deep flag is provided, displays embeds for all the classes. Because it has to retrieve all info like instructors, enrollment data, etc., it takes a while to load all classes.\n\nDisplays all classes under a subject, one page at a time. Use the emoji reactions to scroll through pages.",
@@ -772,7 +758,7 @@ class UCLA(commands.Cog):
             await ctx.send(f"{my_args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
             return
 
-        if not os.path.exists(self.data_dir.format(term=my_args.get("term") or self.default_term) + "/class_names.json"):
+        if self.db.class_data.find_one({"term": my_args.get('term') or self.default_term}) is None:
             await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
         # fetch list of class HTMLS
@@ -798,11 +784,12 @@ class UCLA(commands.Cog):
             page_length = 10
             term_to_search = my_args.get('term') or self.default_term
             if term_to_search in self.current_terms:
-                f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
-                json_object = json.load(f)['class_names']
-                f.close()
-                if subject in json_object:
-                    all_classes = [my_class[0] for my_class in json_object[subject]]
+                # f = open(self.data_dir.format(term=term_to_search) + "/class_names.json")
+                # json_object = json.load(f)['class_names']
+                # f.close()
+                result = self.db.class_data.find_one({"term": term_to_search})
+                if result is not None and "class_names" in result and subject in result["class_names"]:
+                    all_classes = [my_class[0] for my_class in result["class_names"][subject]]
             else:
                 await ctx.send(f"Sorry, {my_args.get('term')} happened too long ago, and the classes there not stored in this bot's database.")
                 return
@@ -1056,18 +1043,27 @@ class UCLA(commands.Cog):
 
 
     def _needs_reload(self, term):
-        if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
-            return True
-        else:
-            f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
-            json_object = json.load(f)
-            f.close()
 
-            # if the last time the json was updated was less than a week ago, we don't have to actually reload
-            if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
-                return False
-            else:
-                return True
+        result = self.db.class_data.find_one({'term': term})
+
+        if result is None or "class_names" not in result or (time.time() - result["last_updated"]) > 7 * 24 * 3600:
+            return True
+        
+        else:
+            return False
+
+        # if not os.path.exists(self.data_dir.format(term=term or self.default_term) + "/class_names.json"):
+        #     return True
+        # else:
+        #     f = open(self.data_dir.format(term=term or self.default_term) + "/class_names.json")
+        #     json_object = json.load(f)
+        #     f.close()
+
+        #     # if the last time the json was updated was less than a week ago, we don't have to actually reload
+        #     if (time.time() - json_object["last_updated"]) < 7 * 24 * 3600:
+        #         return False
+        #     else:
+        #         return True
 
 
     @tasks.loop(hours=24)
@@ -1116,7 +1112,7 @@ class UCLA(commands.Cog):
             return
 
 
-        result = self.db.users.update_one({"discord_id": user_id}, {"$set": {f"aliases.{alias}": target}})
+        result = self.db.users.update_one({"discord_id": user_id}, {"$set": {f"aliases.{alias}": target}}, upsert=True)
         
         if result.modified_count != 0:
             await ctx.send(f"Alias {alias} -> {target} has been set for {ctx.message.author.name}.")
@@ -1129,18 +1125,6 @@ class UCLA(commands.Cog):
                 return 
                 
         await ctx.send(f"Alias failed to be set.")
-        # aliases_list = self.get_alias_list(user_id) or {}
-
-
-        # if not aliases_list or "aliases" not in aliases_list:
-        #     aliases_list["aliases"] = {}
-
-        # aliases_list["aliases"][alias] = target
-
-        
-        # a_file = open(f"speedchat_bot/ucla_data/aliases/{user_id}.json", "w")
-        # json.dump(aliases_list, a_file)
-        # a_file.close()
             
     def get_aliases(self, user_id):
         result = self.db.users.find_one({"discord_id": user_id})
@@ -1162,8 +1146,9 @@ class UCLA(commands.Cog):
 
         aliases = self.get_aliases(user_id)
 
-        if not aliases:
+        if aliases is None or aliases == {}:
             await ctx.send(f"You have no aliases set. (You can set some with ~alias)")
+            return
 
         embedVar = discord.Embed(title=f"Aliases for {ctx.message.author.name}")
 
