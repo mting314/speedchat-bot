@@ -722,6 +722,11 @@ class UCLA(commands.Cog):
         if self.db.class_data.find_one({"term": my_args.get('term') or self.default_term}) is None:
             await ctx.send(f"You haven't looked up classes from {my_args.get('term') or self.default_term} before, this might take a minute or 2 to load all the classes")
 
+        real_name = self.search_for_alias(user_id, subject)
+        if real_name:
+            await ctx.send(f"Applying alias {subject} -> {real_name}")
+            subject = real_name
+
         # fetch list of class HTMLS
         all_classes = []
         if my_args.get("deep"):
@@ -824,6 +829,10 @@ class UCLA(commands.Cog):
         if my_args.get("term") and not validate_term(my_args["term"]):
             await ctx.send(f"{my_args['term']} looks like a malformed term. Needs to be of the form 20F/21W/21S")
             return
+        real_name = self.search_for_alias(user_id, subject)
+        if real_name:
+            await ctx.send(f"Applying alias {subject} -> {real_name}")
+            subject = real_name
 
         htmls = await self._generate_class_view(ctx, subject, catalog, term=my_args.get("term"), user_id=user_id, display_description=True)
         if len(htmls) != 0:
@@ -1029,7 +1038,7 @@ class UCLA(commands.Cog):
 
 
 
-    @commands.command(brief="Make an alias for a subject with weird abbreviation.", help="Stop checking for changes in users' watchlists. It is written, only coolguy5530 can use this command.")
+    @commands.command(brief="Make an alias for a subject with weird abbreviation.", help="Usage: ~alias cs --target COM SCI\n\nCreates an alias for a weird subject abbreviation, for example, if I don't like that Computer Science has to be COM SCI, I could alias 'cs' to 'COM SCI', and then use that in all future searchs, i.e. ~search_class cs 180 will work.")
     async def alias(self, ctx, *, args):
         """
         Registers an alias for a certain target subject, so that you can search for ~search_class CS 180
@@ -1080,7 +1089,7 @@ class UCLA(commands.Cog):
         aliases = self.get_aliases(user_id) or {}
         return aliases.get(alias)
 
-    @commands.command(help="See all the aliases you have set.")
+    @commands.command(brief = "See all the aliases you have set.", help="Usage: ~see_aliases\n\nSee all the aliases you have set.")
     async def see_aliases(self, ctx):
         user_id = ctx.message.author.id
 
@@ -1097,7 +1106,7 @@ class UCLA(commands.Cog):
 
         await ctx.send(embed=embedVar)
 
-    @commands.command(help="Remove an alias you've set.")
+    @commands.command(brief="Remove an alias you've set.", help="Usage: ~remove_alias CS\n\nUnsets an alias.")
     async def remove_alias(self, ctx, *, args):
 
         if not args:
