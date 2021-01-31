@@ -137,7 +137,7 @@ class UCLA(commands.Cog):
         self.COURSE_TITLES_PAGE     = "https://sa.ucla.edu/ro/Public/SOC/Results/CourseTitlesView"
 
 
-        self.db = MongoClient("mongodb+srv://michael:28111230@cluster0.qrg22.mongodb.net/sample_analytics?retryWrites=true&w=majority").discord
+        self.db = MongoClient(f"mongodb+srv://michael:{os.environ.get('DBPASSWORD')}@cluster0.qrg22.mongodb.net/sample_analytics?retryWrites=true&w=majority").discord
 
         self.default_term = "21S"
 
