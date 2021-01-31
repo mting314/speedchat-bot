@@ -18,7 +18,7 @@ class Japanese(commands.Cog):
         status = await ctx.send(f"Searching for {kanji}")
         response_message = ""
         try:
-            result = self.j.searchForPhrase(kanji)
+            result = self.j.search_for_phrase(kanji)
 
             entry = result['data'][0]
             jword = entry['japanese'][0]['word']
@@ -42,14 +42,14 @@ class Japanese(commands.Cog):
 
         # If we looked up hepburn
         if word.isalpha():
-            result = self.j.searchForPhrase(word)
+            result = self.j.search_for_phrase(word)
             entry = result['data'][0]
             search_value = entry['japanese'][0]['word']
         else:
             search_value = word
 
         for kanji in search_value:
-            kanji_result = self.j.searchForKanji(kanji)
+            kanji_result = self.j.search_for_kanji(kanji)
             if 'strokeOrderGifUri' in kanji_result:
                 await ctx.send(kanji_result['strokeOrderGifUri'])
                 sent = True

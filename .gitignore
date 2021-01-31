@@ -7,3 +7,4 @@ env/
 .vscode/.ropeproject/config.py
 .vscode/.ropeproject/objectdb
 debug.log
+speedchat_bot/.vscode/launch.json

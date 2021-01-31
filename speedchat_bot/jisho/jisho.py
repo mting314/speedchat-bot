@@ -18,11 +18,8 @@ STROKE_ORDER_DIAGRAM_BASE_URI = 'https://classic.jisho.org/static/images/stroke_
 def remove_new_lines(my_string):
     return re.sub('/(?:\r|\n)/g', '', my_string).strip()
 
-def uriForSearch(kanji, filter = "words"):
+def uri_for_search(kanji, filter = "words"):
     return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#{filter}')
-
-# def uriForKanjiSearch(kanji):
-#     return "https://" + urllib.parse.quote(f'{SCRAPE_BASE_URI}{kanji}#kanji')
 
 # I'm 99% sure this is bugged/doesn't work anymore because classic.jisho.org doesn't seem to exist anymore
 def getUriForStrokeOrderDiagram(kanji):
@@ -39,12 +36,13 @@ def get_string_between_strings(data, start_string, end_string):
     return match[1] if match is not None else None
 
 
-def parseAnchorsToArray(my_string):
+def parse_anchors_to_array(my_string):
     regex = r'<a href=".*?">(.*?)</a>'
     return re.findall(regex, my_string)
 
 
-def getGifUri(kanji):
+def get_gif_uri(kanji):
+    """Uses the unicode of an input kanji to find the corresponding stroke order gif in mistval's collection"""
     fileName = kanji.encode("unicode-escape").decode("utf-8").replace("\\u", '') + '.gif'
     animationUri = f'https://raw.githubusercontent.com/mistval/kanji_images/master/gifs/{fileName}'
     return animationUri
@@ -83,42 +81,6 @@ def kana_to_halpern(untrans):
     return "".join(halpern)
 
 
-
-def _get_full_vocabulary_string(html):
-    """Return the full furigana of a word from the html."""
-    # The kana represntation of the Jisho entry is contained in this div
-    text_markup = html.find(class_="concept_light-representation")
-
-    upper_furigana = text_markup.find(class_="furigana").find_all('span')
-    inset_furigana = text_markup.find(class_="text").children
-
-    # inset_furigana needs more formatting due to potential bits of kanji sticking together
-    inset_furigana_list = []
-    for f in inset_furigana:
-        cleaned_text = f.string.replace("\n", "").replace(" ", "")
-        if cleaned_text == "":
-            continue
-        elif len(cleaned_text) > 1:
-            for s in cleaned_text:
-                inset_furigana_list.append(s)
-        else:
-            inset_furigana_list.append(cleaned_text)
-
-    children = zip_longest(upper_furigana, inset_furigana_list)
-
-    full_word = []
-    for c in children:
-        if c[0].text != '':
-            full_word.append(c[0].text)
-        elif c[0].text == '' and contains_kana(c[1]):
-            full_word.append(c[1])
-        else:
-            continue
-
-    # print(''.join(full_word))
-    # print("====")
-    return ''.join(full_word)
-
 def contains_kana(word):
     """Takes a word and returns true if there are hiragana or katakana present within the word"""
     for k in word:
@@ -129,7 +91,7 @@ def contains_kana(word):
 kanjiRegex = '[\u4e00-\u9faf\u3400-\u4dbf]'
 
 
-def getKanjiAndKana(div):
+def get_kanji_and_kana(div):
     ul = div.select_one('ul')
     # contents = ul.contents()
 
@@ -165,7 +127,7 @@ def getKanjiAndKana(div):
     return kanji, kana
 
 
-def getPieces(sentenceElement):
+def get_pieces(sentenceElement):
     pieceElements = sentenceElement.select("li.clearfix") + sentenceElement.select("el")
     pieces = []
 
@@ -186,9 +148,9 @@ def getPieces(sentenceElement):
 
 def parseExampleDiv(div):
     english = str(div.select_one('span.english').find(text=True))
-    kanji, kana = getKanjiAndKana(div)
+    kanji, kana = get_kanji_and_kana(div)
 
-    return english, kanji, kana, getPieces(div)
+    return english, kanji, kana, get_pieces(div)
 
 
 def parse_example_page_data(pageHtml, phrase):
@@ -207,7 +169,7 @@ def parse_example_page_data(pageHtml, phrase):
         'query': phrase,
         'found': len(results) > 0,
         'result': results,
-        'uri': uriForSearch(phrase, filter="sentences"),
+        'uri': uri_for_search(phrase, filter="sentences"),
         'phrase': phrase
     }
 
@@ -224,7 +186,7 @@ def get_tags(my_html):
     return tags
 
 
-def getMeaningsOtherFormsAndNotes(my_html):
+def get_meanings_other_forms_and_notes(my_html):
     otherForms = []
     notes = []
 
@@ -270,7 +232,7 @@ def getMeaningsOtherFormsAndNotes(my_html):
             for sentenceElement in sentenceElements:
 
                 english = sentenceElement.select_one("li.english").text
-                pieces = getPieces(sentenceElement)
+                pieces = get_pieces(sentenceElement)
 
                 # remove english and furigana to get left with normal japanese
                 sentenceElement.select_one("li.english").extract()
@@ -298,9 +260,9 @@ def uri_for_phrase_scrape(searchTerm):
     return f'https://jisho.org/word/{urllib.parse.quote(searchTerm)}'
 
 
-def parsePhrasePageData(pageHtml, query):
+def parse_phrase_page_data(pageHtml, query):
     my_html = BeautifulSoup(pageHtml, "lxml")
-    meanings, otherForms, notes = getMeaningsOtherFormsAndNotes(my_html)
+    meanings, otherForms, notes = get_meanings_other_forms_and_notes(my_html)
 
     result = {
         'found': True,
@@ -329,27 +291,27 @@ class Jisho:
         self.html = None
         self.response = None
 
-    def searchForPhrase(self, phrase):
+    def search_for_phrase(self, phrase):
         """Directly use Jisho's official API to get info on a phrase (can be multiple characters)"""
         uri = uriForPhraseSearch(phrase)
         return json.loads(requests.get(uri).content)
 
-    def searchForKanji(self, kanji, depth = "shallow"):
+    def search_for_kanji(self, kanji, depth = "shallow"):
         """Return lots of information for a *single* character"""
-        uri = uriForSearch(kanji, filter="kanji")
+        uri = uri_for_search(kanji, filter="kanji")
         self._extract_html(uri)
         return self.parse_kanji_page_data(kanji, depth)
 
-    def searchForExamples(self, phrase):
+    def search_for_examples(self, phrase):
         """Return """
-        uri = uriForSearch(phrase, filter="sentences")
+        uri = uri_for_search(phrase, filter="sentences")
         self._extract_html(uri)
         return parse_example_page_data(self.html, phrase)
 
-    def scrapeForPhrase(self, phrase):
+    def scrape_for_phrase(self, phrase):
         uri = uri_for_phrase_scrape(phrase)
         response = requests.get(uri)
-        return parsePhrasePageData(response.content, phrase)
+        return parse_phrase_page_data(response.content, phrase)
 
 
     def contains_kanji_glyph(self, kanji):
@@ -367,7 +329,7 @@ class Jisho:
 
     def _get_yomi(self, page_html, yomiLocatorSymbol):
         yomi_section = get_string_between_strings(self.html, f'<dt>{yomiLocatorSymbol}:</dt>', '</dl>')
-        return parseAnchorsToArray(yomi_section) or ''
+        return parse_anchors_to_array(yomi_section) or ''
 
 
     def get_kunyomi(self):
@@ -435,17 +397,17 @@ class Jisho:
         return None
 
 
-    def getParts(self):
-        partsSection = self.html.find("dt", text="Parts:").find_next_sibling('dd')
-        result = parseAnchorsToArray(str(partsSection))
+    def get_parts(self):
+        parts_section = self.html.find("dt", text="Parts:").find_next_sibling('dd')
+        result = parse_anchors_to_array(str(parts_section))
         result.sort()
         return result
 
 
     def get_svg_uri(self):
-        svgRegex = re.compile(r"var url = \'//(.*?cloudfront\.net/.*?.svg)")
-        regexResult = svgRegex.search(str(self.html))
-        return f'https://{regexResult[1]}' if regexResult else None
+        svg_regex = re.compile(r"var url = \'//(.*?cloudfront\.net/.*?.svg)")
+        regex_result = svg_regex.search(str(self.html))
+        return f'https://{regex_result[1]}' if regex_result else None
 
 
 
@@ -468,11 +430,11 @@ class Jisho:
         result['onyomiExamples'] = list(self.get_onyomi_examples())
         result['kunyomiExamples'] = list(self.get_kunyomi_examples())
         result['radical'] = self.get_radical()
-        result['parts'] = self.getParts()
+        result['parts'] = self.get_parts()
         result['strokeOrderDiagramUri'] = getUriForStrokeOrderDiagram(kanji)
         result['strokeOrderSvgUri'] = self.get_svg_uri()
-        result['strokeOrderGifUri'] = getGifUri(kanji)
-        result['uri'] = uriForSearch(kanji, filter="kanji")
+        result['strokeOrderGifUri'] = get_gif_uri(kanji)
+        result['uri'] = uri_for_search(kanji, filter="kanji")
         return result
 
     def _extract_html(self, url):
@@ -481,13 +443,13 @@ class Jisho:
         self.html = BeautifulSoup(self.response.content, "lxml") if self.response.ok else None
         # return self.html
 
-    def searchForWord(self, word, depth="shallow"):
+    def search_for_word(self, word, depth="shallow"):
         """Take a japanese word and spit out well-formatted dictionaries for each entry.
         
         """
 
         # self._get_search_response(word)
-        self._extract_html(uriForSearch(word))
+        self._extract_html(uri_for_search(word))
 
         results = self.html.select(".concept_light.clearfix")
         # print(results)
@@ -627,4 +589,4 @@ class Jisho:
 
 if __name__ == '__main__':
     j = Jisho()
-    j.searchForKanji("草")
+    j.search_for_kanji("草")
