@@ -1,5 +1,3 @@
-from logging import warning
-from sys import executable
 import discord
 from discord.ext import tasks
 import json
@@ -10,14 +8,11 @@ import re
 from bs4 import BeautifulSoup
 import os
 import argparse
-import shutil
 import time
-from tabulate import tabulate
 
 from pymongo import MongoClient, ReturnDocument, errors
 
 import asyncio
-# from pyppeteer import launch
 
 from constants import *
 from perms import *
@@ -204,7 +199,7 @@ class UCLA(commands.Cog):
             model = {"subj_area_cd":subject,"search_by":"subject","term_cd":search_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
             pageNumber = 1
             while True:
-                params = {'search_by': 'subject', 'model': model, "pageNumber":pageNumber, 'FilterFlags': filter_flags, '_': '1571869764769'}
+                params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769'}
 
                 url = _generate_url(self.COURSE_TITLES_VIEW, params)
 
@@ -330,10 +325,6 @@ class UCLA(commands.Cog):
         self.default_term = new_term
         self._reload_classes()
 
-    # @commands.command(help="Search for a class in preparation to add to watch list")    
-    # async def reload_classes(self, ctx, term=None):
-    #     self._reload_classes(ctx, term)
-
 
     def get_subjects_for_term(self, term):
         print(f"getting subjects json for {term}")
@@ -362,30 +353,23 @@ class UCLA(commands.Cog):
 
         print(f"Reloading the {term or self.default_term} class names JSON (this may take a minute or 2)...")
         for n, subject in enumerate(subjects_result["subjects"]):
-            pageNumber = 1
 
             # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
             model = {"subj_area_cd":subject["value"],"search_by":"subject","term_cd":term or self.default_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
             all_classes = []
-            while True:
-                params = {'search_by': 'subject', 'model': model, "pageNumber":pageNumber, 'FilterFlags': filter_flags, '_': '1571869764769'}
+            params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769'}
 
-                url = _generate_url(self.COURSE_TITLES_VIEW, params)
+            url = _generate_url(self.COURSE_TITLES_VIEW, params)
 
-                r = requests.get(url, headers=HEADERS)
-                soup = BeautifulSoup(r.content, "lxml")
-                div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
+            r = requests.get(url, headers=HEADERS)
+            soup = BeautifulSoup(r.content, "lxml")
+            div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
-                for div, script in div_script_pairs:
-                    # I can't guarantee that there isn't some wack scenario where there are two classes
-                    # names exactly the same, make each name+model pair like a tuple instead
-                    all_classes.append(
-                        [div.select_one('a[id$="-title"]').text, model_regex.search(script.decode_contents())[1]])
-                # when we get past all the result pages, we'll get nothing from requests.get
-                if r.content == b'':
-                    break
-
-                pageNumber += 1
+            for div, script in div_script_pairs:
+                # I can't guarantee that there isn't some wack scenario where there are two classes
+                # names exactly the same, make each name+model pair like a tuple instead
+                all_classes.append(
+                    [div.select_one('a[id$="-title"]').text, model_regex.search(script.decode_contents())[1]])
 
             class_name_dict[subject["value"].strip()] = all_classes
 
@@ -954,6 +938,7 @@ class UCLA(commands.Cog):
             database_users = self.db.users.find()
         except errors.ServerSelectionTimeoutError:
             print("couldn't access database users")
+            return
 
         for user in database_users:
 
