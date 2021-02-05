@@ -197,9 +197,9 @@ class UCLA(commands.Cog):
         else:
             # we don't bother storing a json, use old method
             model = {"subj_area_cd":subject,"search_by":"subject","term_cd":search_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
-            pageNumber = 1
+            page_number = 1
             while True:
-                params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769'}
+                params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769', 'pageNumber': page_number}
 
                 url = _generate_url(self.COURSE_TITLES_VIEW, params)
 
@@ -221,7 +221,7 @@ class UCLA(commands.Cog):
                 if r.content == b'':
                     break
 
-                pageNumber += 1
+                page_number += 1
 
         return class_list
 
@@ -357,19 +357,27 @@ class UCLA(commands.Cog):
             # Replace everything but spaces, which get changed to "+", i.e. "ART HIS" -> "ART+HIS"
             model = {"subj_area_cd":subject["value"],"search_by":"subject","term_cd":term or self.default_term,"SubjectAreaName":"Computer Science (COM SCI)","CrsCatlgName":"Enter a Catalog Number or Class Title (Optional)","ActiveEnrollmentFlag":"n","HasData":"True"}
             all_classes = []
-            params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769'}
+            page_number = 1
+            while True:
+                params = {'search_by': 'subject', 'model': model, 'FilterFlags': filter_flags, '_': '1571869764769', 'pageNumber': page_number}
 
-            url = _generate_url(self.COURSE_TITLES_VIEW, params)
+                url = _generate_url(self.COURSE_TITLES_VIEW, params)
 
-            r = requests.get(url, headers=HEADERS)
-            soup = BeautifulSoup(r.content, "lxml")
-            div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
+                r = requests.get(url, headers=HEADERS)
+                soup = BeautifulSoup(r.content, "lxml")
+                div_script_pairs = zip(soup.select("h3.head"), soup.select("script"))
 
-            for div, script in div_script_pairs:
-                # I can't guarantee that there isn't some wack scenario where there are two classes
-                # names exactly the same, make each name+model pair like a tuple instead
-                all_classes.append(
-                    [div.select_one('a[id$="-title"]').text, model_regex.search(script.decode_contents())[1]])
+                for div, script in div_script_pairs:
+                    # I can't guarantee that there isn't some wack scenario where there are two classes
+                    # names exactly the same, make each name+model pair like a tuple instead
+                    all_classes.append(
+                        [div.select_one('a[id$="-title"]').text, model_regex.search(script.decode_contents())[1]])
+                
+                if r.content == b'':
+                    break
+
+                page_number += 1
+
 
             class_name_dict[subject["value"].strip()] = all_classes
 
