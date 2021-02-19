@@ -12,7 +12,7 @@ My attempt at imitating Courscicle for specifically UCLA courses. Also might be 
 
 Given a class name (subject + catalog number, i.e. MATH 151AH or COM SCI 32), spit out lots of revelant information.
 
-![search_class](images/Search.png)
+![search_class](images/search.png)
 
 If term isn't provided, defaults to whatever the default term is set to (can see with `~default_term`).
 
@@ -32,11 +32,11 @@ Displays all classes offered under the given subject in the given term, or defau
 
 If the `--deep` flag isn't provided, displays just the names of the classes offered, 10 at a time. You can scroll through more with the left and right arrow emojis.
 
-![shallow_subject](images/shallow.png)
+![shallow_subject](images/shallow.PNG)
 
 However, if the `--deep` flag is provided, displays embeds for every offering of the each course, 5 at a time.
 
-![deep_subject](images/deep.png)
+![deep_subject](images/deep.PNG)
 
 ### ~see_watchlist
 
@@ -44,7 +44,7 @@ However, if the `--deep` flag is provided, displays embeds for every offering of
 
 Displays embeds for each class in the command author's watchlist.
 
-![watchlist](images/watchlist.png)
+![watchlist](images/watchlist.PNG)
 
 ### ~remove_class
 
@@ -64,7 +64,7 @@ Removes all classes from the command author's watchlist. This means they won't r
 
 Adds an alias for a certain subject name to the command author's collection. This is meant to help people set more convenient and well-known shorthands for many subjects, like "CS" as opposed to "COM SCI". When an alias is set for a user, they will be able to look up classes with that alias.
 
-![alias](images/alias.png)
+![alias](images/alias.PNG)
 
 ### ~remove_alias
 
@@ -78,4 +78,4 @@ Unmaps the given alias.
 
 Displays a small simple embed of all aliases you have set, if you have any.
 
-![see_alias](images/see_aliases.png)
+![see_alias](images/see_aliases.PNG)
