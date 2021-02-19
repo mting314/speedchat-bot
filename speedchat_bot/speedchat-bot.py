@@ -28,7 +28,8 @@ load_dotenv()
 random.seed()
 
 logging.basicConfig(level=logging.INFO)
-cli = commands.Bot(command_prefix=CMD_PREFIX)
+intents = discord.Intents(messages=True, members=True, guilds=True)
+cli = commands.Bot(command_prefix=CMD_PREFIX, intents=intents)
 
 
 @cli.event

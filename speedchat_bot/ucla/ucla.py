@@ -934,6 +934,7 @@ class UCLA(commands.Cog):
         If a class's status has changed, alert user that was watching it, and update their watchlist's data
         
         """
+        await self.bot.wait_until_ready()
         # get all bot users
         try:
             users = await self._get_all_users()
